@@ -164,7 +164,7 @@ Leave completely **blank**.
 
 Click **Override** and type:
 ```
-cd ../.. && pnpm install --frozen-lockfile
+cd ../.. && pnpm install --no-frozen-lockfile
 ```
 
 > This navigates to the monorepo root and installs all packages including the shared database library. Without this override, the build fails because it can't find `@workspace/db`.
@@ -331,7 +331,7 @@ dist/public
 
 Click **Override** → type:
 ```
-cd ../.. && pnpm install --frozen-lockfile
+cd ../.. && pnpm install --no-frozen-lockfile
 ```
 
 ---
@@ -506,7 +506,7 @@ Redeploy both projects after updating all variables.
 | Framework Preset | **Other** |
 | Build Command | *(leave blank)* |
 | Output Directory | *(leave blank)* |
-| Install Command | `cd ../.. && pnpm install --frozen-lockfile` |
+| Install Command | `cd ../.. && pnpm install --no-frozen-lockfile` |
 
 ### Frontend
 
@@ -517,14 +517,14 @@ Redeploy both projects after updating all variables.
 | Framework Preset | **Vite** |
 | Build Command | `pnpm run build` |
 | Output Directory | `dist/public` |
-| Install Command | `cd ../.. && pnpm install --frozen-lockfile` |
+| Install Command | `cd ../.. && pnpm install --no-frozen-lockfile` |
 
 ---
 
 ## Troubleshooting
 
 ### Build fails with "Cannot find module @workspace/db"
-The Install Command is not overridden. Go to **Settings** → **General** → scroll to **Build & Development Settings** and set Install Command to `cd ../.. && pnpm install --frozen-lockfile`.
+The Install Command is not overridden. Go to **Settings** → **General** → scroll to **Build & Development Settings** and set Install Command to `cd ../.. && pnpm install --no-frozen-lockfile`.
 
 ### API health check returns 500 or connection error
 `MONGODB_URI` is wrong. Common mistakes:
