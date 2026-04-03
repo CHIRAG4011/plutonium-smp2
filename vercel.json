@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "NODE_ENV=development pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/plutonium-smp run build && cp -r artifacts/plutonium-smp/dist/public ./public",
+  "buildCommand": "pnpm --filter @workspace/plutonium-smp exec -- vite build --config vite.config.ts --outDir ../../public --emptyOutDir",
   "outputDirectory": "public",
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.ts" },
