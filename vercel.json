@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "installCommand": "pnpm install --frozen-lockfile",
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "lib/db/src/**",
+          "lib/api-zod/src/**",
+          "artifacts/api-server/src/**"
+        ]
+      }
+    },
+    {
+      "src": "artifacts/plutonium-smp/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
