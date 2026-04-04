@@ -3,7 +3,7 @@
   "framework": null,
   "installCommand": "NODE_ENV=development pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm --filter @workspace/plutonium-smp run build",
-  "outputDirectory": "public",
+  "outputDirectory": "dist/public",
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.ts" },
     { "handle": "filesystem" },
