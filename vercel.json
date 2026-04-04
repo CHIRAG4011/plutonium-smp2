@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "NODE_ENV=development pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm --filter @workspace/plutonium-smp run build; echo 'BUILD DONE'; ls artifacts/plutonium-smp/dist/ 2>/dev/null || echo 'NO DIST FOLDER'; node -e \"const{cpSync,mkdirSync}=require('fs');mkdirSync('public',{recursive:true});cpSync('artifacts/plutonium-smp/dist/public','public',{recursive:true});\" && echo 'COPY OK' || echo 'COPY FAILED'",
+  "buildCommand": "pnpm --filter @workspace/plutonium-smp run build",
   "outputDirectory": "public",
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.ts" },
