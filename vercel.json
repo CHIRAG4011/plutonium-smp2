@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "framework": null,
   "installCommand": "NODE_ENV=development pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm --filter @workspace/plutonium-smp run build",
   "outputDirectory": "artifacts/plutonium-smp/dist/public",
