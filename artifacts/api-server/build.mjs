@@ -130,9 +130,6 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     outfile: path.resolve(apiDir, "index.js"),
     logLevel: "info",
     external: ["*.node"],
-    plugins: [
-      esbuildPluginPino({ transports: ["pino-pretty"] })
-    ],
   });
   console.log("✓ Vercel serverless bundle written to api/index.js");
 }
