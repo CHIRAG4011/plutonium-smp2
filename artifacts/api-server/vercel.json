@@ -4,12 +4,12 @@
   "buildCommand": "pnpm run build && cd ../plutonium-smp && pnpm run build && mkdir -p ../api-server/public && cp -r dist/public/. ../api-server/public/",
   "outputDirectory": "public",
   "functions": {
-    "api/index.cjs": {
+    "api/index.js": {
       "maxDuration": 30
     }
   },
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/index.cjs" },
+    { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]

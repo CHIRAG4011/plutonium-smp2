@@ -127,11 +127,11 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     platform: "node",
     bundle: true,
     format: "cjs",
-    outfile: path.resolve(apiDir, "index.cjs"),
+    outfile: path.resolve(apiDir, "index.js"),
     logLevel: "info",
     external: ["*.node"],
   });
-  console.log("✓ Vercel serverless bundle written to api/index.cjs");
+  console.log("✓ Vercel serverless bundle written to api/index.js");
 }
 
 buildAll().catch((err) => {
