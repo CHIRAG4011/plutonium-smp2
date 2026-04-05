@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
-import { LayoutDashboard, Users, ShoppingBag, Ticket, CreditCard, Megaphone, Tag, ShieldCheck, Trophy } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingBag, Ticket, CreditCard, Megaphone, Tag, ShieldCheck, Trophy, Settings } from "lucide-react";
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
@@ -31,6 +31,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     { name: "Purchases", href: "/admin/purchases", icon: CreditCard },
     { name: "Announcements", href: "/admin/announcements", icon: Megaphone },
     { name: "Coupons", href: "/admin/coupons", icon: Tag },
+    { name: "Settings", href: "/admin/settings", icon: Settings },
   ];
 
   return (

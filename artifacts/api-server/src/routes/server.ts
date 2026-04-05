@@ -1,15 +1,28 @@
 import { Router } from "express";
-import { Leaderboard, Announcement, User } from "@workspace/db";
+import { Leaderboard, Announcement, User, ServerConfig } from "@workspace/db";
 import { status as mcStatus } from "minecraft-server-util";
 
 const router = Router();
 
-const SERVER_IP = "play.plutoniumsmp.fun";
-const SERVER_PORT = 24006;
+const DEFAULT_SERVER_IP = "play.plutoniumsmp.fun";
+const DEFAULT_SERVER_PORT = 24005;
 
 let cachedStatus: any = null;
 let lastFetch = 0;
 const CACHE_TTL = 30_000;
+
+async function getServerConfig() {
+  let config = await ServerConfig.findOne({ _id: "main" });
+  if (!config) {
+    config = await ServerConfig.create({
+      _id: "main",
+      serverIp: DEFAULT_SERVER_IP,
+      serverPort: DEFAULT_SERVER_PORT,
+      updatedAt: new Date(),
+    });
+  }
+  return config;
+}
 
 router.get("/server/status", async (_req, res) => {
   const now = Date.now();
@@ -18,28 +31,46 @@ router.get("/server/status", async (_req, res) => {
     return;
   }
   try {
-    const result = await mcStatus(SERVER_IP, SERVER_PORT, { timeout: 5000 });
+    const config = await getServerConfig();
+    const result = await mcStatus(config.serverIp, config.serverPort, { timeout: 5000 });
     cachedStatus = {
       online: true,
       players: result.players.online,
       maxPlayers: result.players.max,
       version: result.version.name,
-      ip: SERVER_IP,
+      ip: config.serverIp,
+      port: config.serverPort,
       uptime: "99.9%",
       tps: 20,
       motd: result.motd?.clean ?? "Plutonium SMP",
     };
   } catch {
-    cachedStatus = {
-      online: false,
-      players: 0,
-      maxPlayers: 100,
-      version: "1.21.1",
-      ip: SERVER_IP,
-      uptime: "99.9%",
-      tps: 0,
-      motd: "Server offline",
-    };
+    try {
+      const config = await getServerConfig();
+      cachedStatus = {
+        online: false,
+        players: 0,
+        maxPlayers: 100,
+        version: "1.21.1",
+        ip: config.serverIp,
+        port: config.serverPort,
+        uptime: "99.9%",
+        tps: 0,
+        motd: "Server offline",
+      };
+    } catch {
+      cachedStatus = {
+        online: false,
+        players: 0,
+        maxPlayers: 100,
+        version: "1.21.1",
+        ip: DEFAULT_SERVER_IP,
+        port: DEFAULT_SERVER_PORT,
+        uptime: "99.9%",
+        tps: 0,
+        motd: "Server offline",
+      };
+    }
   }
   lastFetch = now;
   res.json(cachedStatus);
