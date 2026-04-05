@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Purchase, User } from "@workspace/db";
+import { Purchase, User, Leaderboard } from "@workspace/db";
 import { requireAuth, AuthRequest } from "../lib/auth.js";
 
 const router = Router();
@@ -29,6 +29,14 @@ router.put("/me", requireAuth, async (req: AuthRequest, res) => {
     }
 
     await User.updateOne({ _id: req.user!.id }, updates);
+
+    // Keep leaderboard in sync
+    if (updates.minecraftUsername !== undefined) {
+      await Leaderboard.updateOne(
+        { userId: req.user!.id },
+        { minecraftUsername: updates.minecraftUsername, updatedAt: new Date() }
+      ).catch(() => {});
+    }
 
     const updated = await User.findOne({ _id: req.user!.id });
     if (!updated) { res.status(404).json({ error: "User not found" }); return; }
