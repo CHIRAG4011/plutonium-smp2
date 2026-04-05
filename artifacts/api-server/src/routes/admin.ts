@@ -339,6 +339,81 @@ router.put("/server-config", async (req, res) => {
   }
 });
 
+router.get("/site-config", async (req, res) => {
+  try {
+    let config = await ServerConfig.findOne({ _id: "main" });
+    if (!config) {
+      config = await ServerConfig.create({ _id: "main", serverIp: "play.plutoniumsmp.fun", serverPort: 24005, updatedAt: new Date() });
+    }
+    res.json({
+      siteName: config.siteName,
+      logoUrl: config.logoUrl,
+      serverIp: config.serverIp,
+      serverPort: config.serverPort,
+      serverStatusOverride: config.serverStatusOverride,
+      heroTitle: config.heroTitle,
+      heroTitleHighlight: config.heroTitleHighlight,
+      heroSubtitle: config.heroSubtitle,
+      voteTitle: config.voteTitle,
+      voteDescription: config.voteDescription,
+      topVoterReward: config.topVoterReward,
+      voteSites: config.voteSites,
+      featuresTitle: config.featuresTitle,
+      featuresSubtitle: config.featuresSubtitle,
+      features: config.features,
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/site-config", async (req, res) => {
+  try {
+    const {
+      siteName, logoUrl, serverIp, serverPort, serverStatusOverride,
+      heroTitle, heroTitleHighlight, heroSubtitle,
+      voteTitle, voteDescription, topVoterReward, voteSites,
+      featuresTitle, featuresSubtitle, features,
+    } = req.body;
+
+    const update: Record<string, any> = { updatedAt: new Date() };
+    if (siteName !== undefined) update.siteName = siteName;
+    if (logoUrl !== undefined) update.logoUrl = logoUrl;
+    if (serverIp !== undefined) update.serverIp = serverIp;
+    if (serverPort !== undefined) {
+      const port = Number(serverPort);
+      if (isNaN(port) || port <= 0 || port > 65535) {
+        res.status(400).json({ error: "Invalid port number" });
+        return;
+      }
+      update.serverPort = port;
+    }
+    if (serverStatusOverride !== undefined) update.serverStatusOverride = serverStatusOverride;
+    if (heroTitle !== undefined) update.heroTitle = heroTitle;
+    if (heroTitleHighlight !== undefined) update.heroTitleHighlight = heroTitleHighlight;
+    if (heroSubtitle !== undefined) update.heroSubtitle = heroSubtitle;
+    if (voteTitle !== undefined) update.voteTitle = voteTitle;
+    if (voteDescription !== undefined) update.voteDescription = voteDescription;
+    if (topVoterReward !== undefined) update.topVoterReward = topVoterReward;
+    if (voteSites !== undefined) update.voteSites = voteSites;
+    if (featuresTitle !== undefined) update.featuresTitle = featuresTitle;
+    if (featuresSubtitle !== undefined) update.featuresSubtitle = featuresSubtitle;
+    if (features !== undefined) update.features = features;
+
+    const config = await ServerConfig.findOneAndUpdate(
+      { _id: "main" },
+      update,
+      { new: true, upsert: true }
+    );
+
+    res.json({ message: "Site config updated", config });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/seed", async (req, res) => {
   try {
     const results: string[] = [];

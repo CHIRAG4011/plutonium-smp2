@@ -24,6 +24,39 @@ async function getServerConfig() {
   return config;
 }
 
+router.get("/site-config", async (_req, res) => {
+  try {
+    const config = await getServerConfig();
+    res.json({
+      siteName: config.siteName || "PLUTONIUM SMP",
+      logoUrl: config.logoUrl || "",
+      serverIp: config.serverIp,
+      heroTitle: config.heroTitle || "Die Once.",
+      heroTitleHighlight: config.heroTitleHighlight || "Lose Everything.",
+      heroSubtitle: config.heroSubtitle || "The most brutal Minecraft Lifesteal experience. Steal hearts, build your empire, and dominate the leaderboard.",
+      voteTitle: config.voteTitle || "Vote & Earn",
+      voteDescription: config.voteDescription || "Vote for us every 24 hours to earn free OWO coins. Every vote helps the server grow!",
+      topVoterReward: config.topVoterReward || "Most votes this month wins an exclusive rank upgrade + 10,000 OWO Coins",
+      voteSites: config.voteSites?.length ? config.voteSites : [
+        { name: "TopG", url: "https://topg.org/minecraft-servers/server-680957", reward: "+500 OWO Coins" },
+        { name: "Minecraft Server List", url: "https://minecraft-server-list.com/server/518991/", reward: "+500 OWO Coins" },
+        { name: "Minecraft-MP", url: "https://minecraft-mp.com/server-s356241", reward: "+500 OWO Coins" },
+        { name: "Minecraft.Buzz", url: "https://minecraft.buzz/server/20060", reward: "+500 OWO Coins" },
+      ],
+      featuresTitle: config.featuresTitle || "Why Plutonium?",
+      featuresSubtitle: config.featuresSubtitle || "We've custom coded every aspect of the server to provide an unmatched, lag-free competitive experience.",
+      features: config.features?.length ? config.features : [
+        { title: "Lifesteal Core", desc: "Kill players to steal their hearts. Hit 0 hearts and you're banned until the next season." },
+        { title: "OWO Economy", desc: "Farm, trade, and grind to earn OWO coins. Use them to buy exclusive gear and ranks." },
+        { title: "Custom Enchants", desc: "Over 50+ unique balanced enchants to forge the ultimate god sets." },
+        { title: "Active Community", desc: "Join hundreds of other players in massive clan wars and daily events." },
+      ],
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/server/status", async (_req, res) => {
   const now = Date.now();
   if (cachedStatus && now - lastFetch < CACHE_TTL) {
@@ -32,6 +65,41 @@ router.get("/server/status", async (_req, res) => {
   }
   try {
     const config = await getServerConfig();
+
+    if (config.serverStatusOverride === "online") {
+      cachedStatus = {
+        online: true,
+        players: 0,
+        maxPlayers: 100,
+        version: "1.21.1",
+        ip: config.serverIp,
+        port: config.serverPort,
+        uptime: "99.9%",
+        tps: 20,
+        motd: config.siteName || "Plutonium SMP",
+      };
+      lastFetch = now;
+      res.json(cachedStatus);
+      return;
+    }
+
+    if (config.serverStatusOverride === "offline") {
+      cachedStatus = {
+        online: false,
+        players: 0,
+        maxPlayers: 100,
+        version: "1.21.1",
+        ip: config.serverIp,
+        port: config.serverPort,
+        uptime: "99.9%",
+        tps: 0,
+        motd: "Server offline",
+      };
+      lastFetch = now;
+      res.json(cachedStatus);
+      return;
+    }
+
     const result = await mcStatus(config.serverIp, config.serverPort, { timeout: 5000 });
     cachedStatus = {
       online: true,

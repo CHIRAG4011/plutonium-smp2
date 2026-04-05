@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
+import { SiteConfigProvider } from "@/lib/siteConfig";
 
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -70,6 +71,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <SiteConfigProvider>
       <AuthProvider>
         <CartProvider>
           <TooltipProvider>
@@ -86,6 +88,7 @@ function App() {
           </TooltipProvider>
         </CartProvider>
       </AuthProvider>
+      </SiteConfigProvider>
     </QueryClientProvider>
   );
 }

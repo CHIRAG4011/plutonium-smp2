@@ -4,54 +4,45 @@ import { Copy, Check, Users, Sword, Shield, Coins, AlertCircle, ExternalLink, St
 import { useGetServerStatus, useGetAnnouncements } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
+import { useSiteConfig } from "@/lib/siteConfig";
 
-const SERVER_IP = "play.plutoniumsmp.fun";
-
-const VOTE_SITES = [
+const VOTE_SITE_COLORS = [
   {
-    name: "TopG",
-    url: "https://topg.org/minecraft-servers/server-680957",
-    icon: "https://topg.org/favicon.ico",
-    reward: "+500 OWO Coins",
     color: "hover:border-yellow-500/50 hover:shadow-[0_0_16px_rgba(234,179,8,0.2)]",
     badge: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
+    icon: "https://topg.org/favicon.ico",
   },
   {
-    name: "Minecraft Server List",
-    url: "https://minecraft-server-list.com/server/518991/",
-    icon: "https://minecraft-server-list.com/favicon.ico",
-    reward: "+500 OWO Coins",
     color: "hover:border-orange-500/50 hover:shadow-[0_0_16px_rgba(249,115,22,0.2)]",
     badge: "bg-orange-500/10 text-orange-400 border-orange-500/30",
+    icon: "https://minecraft-server-list.com/favicon.ico",
   },
   {
-    name: "Minecraft-MP",
-    url: "https://minecraft-mp.com/server-s356241",
-    icon: "https://minecraft-mp.com/favicon.ico",
-    reward: "+500 OWO Coins",
     color: "hover:border-green-500/50 hover:shadow-[0_0_16px_rgba(34,197,94,0.2)]",
     badge: "bg-green-500/10 text-green-400 border-green-500/30",
+    icon: "https://minecraft-mp.com/favicon.ico",
   },
   {
-    name: "Minecraft.Buzz",
-    url: "https://minecraft.buzz/server/20060",
-    icon: "https://minecraft.buzz/favicon.ico",
-    reward: "+500 OWO Coins",
     color: "hover:border-blue-500/50 hover:shadow-[0_0_16px_rgba(59,130,246,0.2)]",
     badge: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+    icon: "https://minecraft.buzz/favicon.ico",
   },
 ];
 
+const FEATURE_ICONS = [Sword, Coins, Shield, Users];
+
 export default function Home() {
   const [copied, setCopied] = useState(false);
+  const config = useSiteConfig();
 
   const { data: serverStatus } = useGetServerStatus();
   const { data: announcements } = useGetAnnouncements();
 
+  const serverIp = config.serverIp || "play.plutoniumsmp.fun";
+
   const handleCopyIP = () => {
-    navigator.clipboard.writeText(SERVER_IP);
+    navigator.clipboard.writeText(serverIp);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -89,14 +80,14 @@ export default function Home() {
             </div>
 
             <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter mb-6 uppercase">
-              Die Once. <br />
+              {config.heroTitle} <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-green-300 neon-text-glow">
-                Lose Everything.
+                {config.heroTitleHighlight}
               </span>
             </h1>
 
             <p className="mt-4 max-w-2xl mx-auto text-lg sm:text-xl text-muted-foreground mb-10">
-              The most brutal Minecraft Lifesteal experience. Steal hearts, build your empire, and dominate the leaderboard.
+              {config.heroSubtitle}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-lg mx-auto">
@@ -106,7 +97,7 @@ export default function Home() {
               >
                 <div className="flex flex-col items-start">
                   <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Server IP</span>
-                  <span className="font-mono text-lg font-bold text-foreground">{SERVER_IP}</span>
+                  <span className="font-mono text-lg font-bold text-foreground">{serverIp}</span>
                 </div>
                 <div className="ml-4 p-2 rounded-lg bg-border group-hover:bg-primary/20 group-hover:text-primary transition-colors">
                   {copied ? <Check className="w-5 h-5 text-primary" /> : <Copy className="w-5 h-5" />}
@@ -157,32 +148,30 @@ export default function Home() {
       <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="font-display text-4xl font-bold mb-4">Why Plutonium?</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">We've custom coded every aspect of the server to provide an unmatched, lag-free competitive experience.</p>
+            <h2 className="font-display text-4xl font-bold mb-4">{config.featuresTitle}</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">{config.featuresSubtitle}</p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              { icon: Sword, title: "Lifesteal Core", desc: "Kill players to steal their hearts. Hit 0 hearts and you're banned until the next season." },
-              { icon: Coins, title: "OWO Economy", desc: "Farm, trade, and grind to earn OWO coins. Use them to buy exclusive gear and ranks." },
-              { icon: Shield, title: "Custom Enchants", desc: "Over 50+ unique balanced enchants to forge the ultimate god sets." },
-              { icon: Users, title: "Active Community", desc: "Join hundreds of other players in massive clan wars and daily events." },
-            ].map((feat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all group"
-              >
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <feat.icon className="w-7 h-7 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">{feat.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{feat.desc}</p>
-              </motion.div>
-            ))}
+            {config.features.map((feat, i) => {
+              const Icon = FEATURE_ICONS[i % FEATURE_ICONS.length];
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all group"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Icon className="w-7 h-7 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-3">{feat.title}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{feat.desc}</p>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -201,48 +190,57 @@ export default function Home() {
               Free Rewards
             </div>
             <h2 className="font-display text-4xl font-black mb-4 uppercase">
-              Vote & <span className="text-primary">Earn</span>
+              {config.voteTitle.includes("&") ? (
+                <>
+                  {config.voteTitle.split("&")[0]}&{" "}
+                  <span className="text-primary">{config.voteTitle.split("&")[1]}</span>
+                </>
+              ) : (
+                config.voteTitle
+              )}
             </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Vote for Plutonium SMP every 24 hours to earn free OWO coins. Every vote helps the server grow!
+              {config.voteDescription}
             </p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 gap-4 mb-8">
-            {VOTE_SITES.map((site, i) => (
-              <motion.a
-                key={site.name}
-                href={site.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className={`group flex items-center gap-4 p-5 rounded-2xl border border-border bg-card transition-all duration-200 ${site.color} cursor-pointer`}
-              >
-                <div className="w-12 h-12 rounded-xl bg-background border border-border flex items-center justify-center shrink-0 overflow-hidden">
-                  <img
-                    src={site.icon}
-                    alt={site.name}
-                    className="w-7 h-7 object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                </div>
-                <div className="flex-grow min-w-0">
-                  <div className="font-bold text-base group-hover:text-foreground transition-colors flex items-center gap-2">
-                    {site.name}
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+            {config.voteSites.map((site, i) => {
+              const colors = VOTE_SITE_COLORS[i % VOTE_SITE_COLORS.length];
+              const iconUrl = site.url ? `https://${new URL(site.url).hostname}/favicon.ico` : colors.icon;
+              return (
+                <motion.a
+                  key={site.name}
+                  href={site.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                  className={`group flex items-center gap-4 p-5 rounded-2xl border border-border bg-card transition-all duration-200 ${colors.color} cursor-pointer`}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-background border border-border flex items-center justify-center shrink-0 overflow-hidden">
+                    <img
+                      src={iconUrl}
+                      alt={site.name}
+                      className="w-7 h-7 object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Vote once every 24 hours</div>
-                </div>
-                <Badge variant="outline" className={`shrink-0 font-semibold text-xs ${site.badge}`}>
-                  {site.reward}
-                </Badge>
-              </motion.a>
-            ))}
+                  <div className="flex-grow min-w-0">
+                    <div className="font-bold text-base group-hover:text-foreground transition-colors flex items-center gap-2">
+                      {site.name}
+                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Vote once every 24 hours</div>
+                  </div>
+                  <Badge variant="outline" className={`shrink-0 font-semibold text-xs ${colors.badge}`}>
+                    {site.reward}
+                  </Badge>
+                </motion.a>
+              );
+            })}
           </div>
 
           <motion.div
@@ -257,13 +255,13 @@ export default function Home() {
               </div>
               <div>
                 <div className="font-bold text-sm">Top Voter Reward</div>
-                <div className="text-xs text-muted-foreground">Most votes this month wins an exclusive rank upgrade + 10,000 OWO Coins</div>
+                <div className="text-xs text-muted-foreground">{config.topVoterReward}</div>
               </div>
             </div>
             <div className="h-px sm:h-10 w-full sm:w-px bg-border" />
             <div className="text-center sm:text-left">
-              <div className="font-bold text-sm text-primary">4 sites × 500 coins</div>
-              <div className="text-xs text-muted-foreground">= 2,000 OWO coins per day, free</div>
+              <div className="font-bold text-sm text-primary">{config.voteSites.length} sites × {config.voteSites[0]?.reward || "500 coins"}</div>
+              <div className="text-xs text-muted-foreground">= free rewards per day</div>
             </div>
             <div className="h-px sm:h-10 w-full sm:w-px bg-border" />
             <div className="text-center sm:text-left">

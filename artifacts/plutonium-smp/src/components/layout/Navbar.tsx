@@ -6,12 +6,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, X, ShoppingCart, ShieldAlert } from "lucide-react";
 import { useState } from "react";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 export function Navbar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { count } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { siteName, logoUrl } = useSiteConfig();
+
+  const [namePart1, namePart2] = siteName.includes(" ")
+    ? [siteName.slice(0, siteName.lastIndexOf(" ")), siteName.slice(siteName.lastIndexOf(" ") + 1)]
+    : [siteName, ""];
 
   const navLinks = [
     { name: "Home", href: "/" },
@@ -28,12 +34,12 @@ export function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
             <img
-              src={`${import.meta.env.BASE_URL}images/logo.png`}
-              alt="Plutonium SMP"
+              src={logoUrl || `${import.meta.env.BASE_URL}images/logo.png`}
+              alt={siteName}
               className="w-10 h-10 rounded-xl group-hover:neon-glow transition-all duration-300"
             />
             <span className="font-display font-bold text-2xl tracking-tight hidden sm:block group-hover:neon-text-glow transition-all">
-              PLUTONIUM<span className="text-primary">SMP</span>
+              {namePart1}<span className="text-primary">{namePart2}</span>
             </span>
           </Link>
 
