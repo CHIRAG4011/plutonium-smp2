@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useGetUserPurchases } from "@workspace/api-client-react";
 import { Redirect, Link, useSearch } from "wouter";
@@ -6,9 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { User, Calendar, Shield, ShoppingBag, Package, Clock, CheckCircle, XCircle, RotateCcw } from "lucide-react";
+import { User, Calendar, Shield, ShoppingBag, Package, Clock, CheckCircle, XCircle, RotateCcw, Pencil, Check, X } from "lucide-react";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; icon: JSX.Element; className: string }> = {
@@ -26,11 +29,16 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function Dashboard() {
-  const { user, isLoading, login: setAuthToken } = useAuth();
+  const { user, isLoading, login: setAuthToken, refetchUser } = useAuth();
+  const { toast } = useToast();
   const search = useSearch();
   const { data: purchases, isLoading: purchasesLoading } = useGetUserPurchases({
     query: { enabled: !!user }
   });
+
+  const [editingMc, setEditingMc] = useState(false);
+  const [mcInput, setMcInput] = useState("");
+  const [mcSaving, setMcSaving] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(search);
@@ -47,6 +55,40 @@ export default function Dashboard() {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
   if (!user) return <Redirect to="/login" />;
+
+  function startEditMc() {
+    setMcInput(user?.minecraftUsername || "");
+    setEditingMc(true);
+  }
+
+  function cancelEditMc() {
+    setEditingMc(false);
+    setMcInput("");
+  }
+
+  async function saveMcUsername() {
+    if (mcSaving) return;
+    setMcSaving(true);
+    try {
+      const res = await fetch("/api/users/me", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("plutonium_token") || ""}`,
+        },
+        body: JSON.stringify({ minecraftUsername: mcInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save");
+      await refetchUser();
+      setEditingMc(false);
+      toast({ title: "Minecraft username updated", description: mcInput.trim() || "Cleared successfully." });
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setMcSaving(false);
+    }
+  }
 
   const pending = purchases?.filter(p => p.status === "pending") ?? [];
   const completed = purchases?.filter(p => p.status === "completed") ?? [];
@@ -76,12 +118,49 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
-            {user.minecraftUsername && (
-              <div className="flex items-center gap-3 text-sm text-muted-foreground px-1">
-                <User className="w-4 h-4 text-primary" />
-                <span>MC: {user.minecraftUsername}</span>
-              </div>
-            )}
+            {/* Minecraft Username */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Minecraft Username</Label>
+              {editingMc ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={mcInput}
+                    onChange={(e) => setMcInput(e.target.value)}
+                    placeholder="YourMCName"
+                    maxLength={16}
+                    className="h-8 text-sm"
+                    onKeyDown={(e) => { if (e.key === "Enter") saveMcUsername(); if (e.key === "Escape") cancelEditMc(); }}
+                    autoFocus
+                  />
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-primary shrink-0" onClick={saveMcUsername} disabled={mcSaving}>
+                    <Check className="w-4 h-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground shrink-0" onClick={cancelEditMc} disabled={mcSaving}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 group">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <User className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-sm truncate">
+                      {user.minecraftUsername
+                        ? <span className="font-medium text-foreground">{user.minecraftUsername}</span>
+                        : <span className="text-muted-foreground italic">Not set</span>
+                      }
+                    </span>
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary shrink-0"
+                    onClick={startEditMc}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-3 text-sm text-muted-foreground px-1">
               <Calendar className="w-4 h-4 text-primary" />
