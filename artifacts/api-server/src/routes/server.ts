@@ -100,45 +100,67 @@ router.get("/server/status", async (_req, res) => {
       return;
     }
 
-    const result = await mcStatus(config.serverIp, config.serverPort, { timeout: 5000 });
+    let online = false;
+    let players = 0;
+    let maxPlayers = 100;
+    let version = "1.21.1";
+    let motd = "Plutonium SMP";
+
+    // Try minecraft-server-util first
+    try {
+      const result = await mcStatus(config.serverIp, config.serverPort, { timeout: 5000 });
+      online = true;
+      players = result.players.online;
+      maxPlayers = result.players.max;
+      version = result.version.name;
+      motd = result.motd?.clean ?? "Plutonium SMP";
+    } catch {
+      // Fallback: mcsrvstat.us public API
+      try {
+        const host = config.serverPort && config.serverPort !== 25565
+          ? `${config.serverIp}:${config.serverPort}`
+          : config.serverIp;
+        const apiRes = await fetch(`https://api.mcsrvstat.us/3/${host}`, {
+          signal: AbortSignal.timeout(8000),
+        });
+        if (apiRes.ok) {
+          const data = await apiRes.json() as any;
+          if (data.online) {
+            online = true;
+            players = data.players?.online ?? 0;
+            maxPlayers = data.players?.max ?? 100;
+            version = data.version ?? "1.21.1";
+            motd = data.motd?.clean?.[0] ?? "Plutonium SMP";
+          }
+        }
+      } catch {
+        // Both methods failed — server is offline or unreachable
+      }
+    }
+
     cachedStatus = {
-      online: true,
-      players: result.players.online,
-      maxPlayers: result.players.max,
-      version: result.version.name,
+      online,
+      players,
+      maxPlayers,
+      version,
       ip: config.serverIp,
       port: config.serverPort,
       uptime: "99.9%",
-      tps: 20,
-      motd: result.motd?.clean ?? "Plutonium SMP",
+      tps: online ? 20 : 0,
+      motd,
     };
   } catch {
-    try {
-      const config = await getServerConfig();
-      cachedStatus = {
-        online: false,
-        players: 0,
-        maxPlayers: 100,
-        version: "1.21.1",
-        ip: config.serverIp,
-        port: config.serverPort,
-        uptime: "99.9%",
-        tps: 0,
-        motd: "Server offline",
-      };
-    } catch {
-      cachedStatus = {
-        online: false,
-        players: 0,
-        maxPlayers: 100,
-        version: "1.21.1",
-        ip: DEFAULT_SERVER_IP,
-        port: DEFAULT_SERVER_PORT,
-        uptime: "99.9%",
-        tps: 0,
-        motd: "Server offline",
-      };
-    }
+    cachedStatus = {
+      online: false,
+      players: 0,
+      maxPlayers: 100,
+      version: "1.21.1",
+      ip: DEFAULT_SERVER_IP,
+      port: DEFAULT_SERVER_PORT,
+      uptime: "99.9%",
+      tps: 0,
+      motd: "Server offline",
+    };
   }
   lastFetch = now;
   res.json(cachedStatus);
