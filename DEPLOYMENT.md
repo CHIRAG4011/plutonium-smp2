@@ -199,7 +199,7 @@ Scroll down to **Environment Variables** and add:
 
 Click **Deploy** and wait 2–3 minutes. You will see a success screen with your URL, e.g. `https://plutonium-smp.vercel.app`.
 
-**Verify the API is working:** open `https://plutonium-smp.vercel.app/api/health` — you should see `{"status":"ok"}`.
+**Verify the API is working:** open `https://plutonium-smp.vercel.app/api/healthz` — you should see `{"status":"ok"}`.
 
 ---
 
