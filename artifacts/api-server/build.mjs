@@ -12,7 +12,9 @@ const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
+  const apiDir = path.resolve(artifactDir, "api");
   await rm(distDir, { recursive: true, force: true });
+  await rm(apiDir, { recursive: true, force: true });
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],
@@ -118,6 +120,21 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  // Build Vercel serverless bundle (CJS, bundles all deps)
+  await esbuild({
+    entryPoints: [path.resolve(artifactDir, "src/serverless.ts")],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: path.resolve(apiDir, "index.js"),
+    logLevel: "info",
+    external: ["*.node"],
+    plugins: [
+      esbuildPluginPino({ transports: ["pino-pretty"] })
+    ],
+  });
+  console.log("✓ Vercel serverless bundle written to api/index.js");
 }
 
 buildAll().catch((err) => {
