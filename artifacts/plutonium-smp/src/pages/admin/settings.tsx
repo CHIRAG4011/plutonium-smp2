@@ -73,8 +73,13 @@ export default function AdminSettings() {
   const [seedLoading, setSeedLoading] = useState(false);
   const [seedResults, setSeedResults] = useState<string[]>([]);
 
+  const getAuthHeaders = () => ({
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${localStorage.getItem("plutonium_token") || ""}`,
+  });
+
   useEffect(() => {
-    fetch("/api/admin/site-config", { credentials: "include" })
+    fetch("/api/admin/site-config", { headers: getAuthHeaders() })
       .then((r) => r.json())
       .then((data) => {
         setForm({
@@ -139,8 +144,7 @@ export default function AdminSettings() {
     try {
       const res = await fetch("/api/admin/site-config", {
         method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ ...form, serverPort: port }),
       });
       const data = await res.json();
@@ -157,7 +161,7 @@ export default function AdminSettings() {
     setSeedLoading(true);
     setSeedResults([]);
     try {
-      const res = await fetch("/api/admin/seed", { method: "POST", credentials: "include" });
+      const res = await fetch("/api/admin/seed", { method: "POST", headers: getAuthHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Seed failed");
       setSeedResults(data.results || [data.message]);
