@@ -192,6 +192,9 @@ Scroll down to **Environment Variables** and add:
 |---|---|
 | `DISCORD_CLIENT_ID` | Your Discord app Client ID |
 | `DISCORD_CLIENT_SECRET` | Your Discord app Client Secret |
+| `APP_URL` | Your full API domain, e.g. `https://plutoniumsmp.fun` |
+
+> **`APP_URL` is critical for Discord OAuth.** Without it, the API may generate an incorrect redirect URI from Vercel's internal hostname instead of your custom domain, causing a "redirect_uri_mismatch" error from Discord. Always set this to whatever domain your Vercel project is publicly served on.
 
 ---
 
@@ -274,40 +277,74 @@ Visit your live site → **Login** and sign in with:
 1. Go to [discord.com/developers/applications](https://discord.com/developers/applications)
 2. Click **New Application** → name it `Plutonium SMP` → **Create**
 
-### Step 2 — Add the redirect URI
+### Step 2 — Copy your credentials
 
-1. Left sidebar → **OAuth2**
-2. Under **Redirects** → **Add Redirect**:
+1. Left sidebar → **OAuth2** → **General**
+2. Copy the **Client ID** — you'll need this shortly
+3. Click **Reset Secret** → copy the **Client Secret** — save it securely
+
+### Step 3 — Add the redirect URI
+
+This is the most common source of Discord OAuth errors. The redirect URI you add here must **exactly** match the URL the API generates at runtime.
+
+1. On the same **OAuth2 → General** page, scroll to **Redirects**
+2. Click **Add Redirect** and enter your callback URL:
+
+   **If using a custom domain (e.g. `plutoniumsmp.fun`):**
    ```
-   https://plutonium-smp.vercel.app/api/auth/discord/callback
+   https://plutoniumsmp.fun/api/auth/discord/callback
    ```
-   Replace with your actual Vercel URL.
+
+   **If using the default Vercel URL:**
+   ```
+   https://your-project-name.vercel.app/api/auth/discord/callback
+   ```
+
 3. Click **Save Changes**
 
-### Step 3 — Add to Vercel
+> If you add a custom domain later, come back here and add a second redirect URI for it — Discord allows multiple.
 
-Go to your Vercel project → **Settings** → **Environment Variables** → add:
+### Step 4 — Add environment variables to Vercel
+
+Go to your Vercel project → **Settings** → **Environment Variables** → add all three:
 
 | Name | Value |
 |---|---|
 | `DISCORD_CLIENT_ID` | Your Discord Client ID |
 | `DISCORD_CLIENT_SECRET` | Your Discord Client Secret |
+| `APP_URL` | `https://plutoniumsmp.fun` ← your public domain (no trailing slash) |
 
-Then: **Deployments** → three-dot menu on the latest → **Redeploy**.
+> **Why `APP_URL`?** The API constructs the redirect URI dynamically. Without `APP_URL`, it may fall back to Vercel's internal `.vercel.app` hostname instead of your custom domain — causing a mismatch even if your custom domain is in Discord's allowed list.
+
+### Step 5 — Redeploy
+
+**Deployments** → three-dot menu on the latest deployment → **Redeploy** (so the new env vars take effect).
 
 ---
 
 ## PART 6 — Custom Domain (Optional)
 
 1. Vercel project → **Settings** → **Domains**
-2. Click **Add** → enter your domain (e.g. `plutoniumsmp.net`)
+2. Click **Add** → enter your domain (e.g. `plutoniumsmp.fun`)
 3. Add the DNS records shown at your registrar (Namecheap, GoDaddy, Cloudflare, etc.)
 4. Wait a few minutes — Vercel shows a green checkmark when ready
 
-If you are using Discord OAuth, update the redirect in the Discord developer portal to:
+After the domain is live, update two more things:
+
+**Update `APP_URL` in Vercel:**
+Go to **Settings** → **Environment Variables** → set/update `APP_URL` to your custom domain:
 ```
-https://plutoniumsmp.net/api/auth/discord/callback
+https://plutoniumsmp.fun
 ```
+
+**Update Discord redirect URI** (if using Discord OAuth):
+Go to the Discord Developer Portal → your app → **OAuth2** → **Redirects** → add:
+```
+https://plutoniumsmp.fun/api/auth/discord/callback
+```
+You can keep the old `.vercel.app` redirect as well — Discord allows multiple.
+
+Then redeploy for the `APP_URL` change to take effect.
 
 ---
 
@@ -318,6 +355,7 @@ https://plutoniumsmp.net/api/auth/discord/callback
 | `MONGODB_URI` | **YES** | MongoDB Atlas connection string |
 | `SESSION_SECRET` | **YES** | 64-char random string for JWT tokens. Never change after going live. |
 | `NODE_ENV` | **YES** | Set to `production` |
+| `APP_URL` | **YES (if using Discord OAuth or custom domain)** | Your public domain with no trailing slash, e.g. `https://plutoniumsmp.fun`. Ensures Discord OAuth generates the correct redirect URI. |
 | `DISCORD_CLIENT_ID` | Optional | Discord app Client ID |
 | `DISCORD_CLIENT_SECRET` | Optional | Discord app Client Secret |
 | `RESEND_API_KEY` | Email | Resend.com API key. If set, overrides SMTP. |
@@ -359,8 +397,17 @@ The install command in `vercel.json` uses `cd ../..` to install from the workspa
 ### Login works but OTP email never arrives
 Email is not configured. Add `RESEND_API_KEY` + `SMTP_FROM` (or the full SMTP variables) and redeploy.
 
-### "redirect_uri_mismatch" when logging in with Discord
-The redirect URI in the Discord developer portal doesn't match. Make sure it is exactly `https://YOUR_VERCEL_URL/api/auth/discord/callback` with no trailing slash.
+### "redirect_uri_mismatch" or "invalid redirect_uri" when logging in with Discord
+Two things must match exactly:
+1. The URI registered in the Discord Developer Portal (OAuth2 → Redirects)
+2. The URI the API sends to Discord at runtime — which is `APP_URL + /api/auth/discord/callback`
+
+**Checklist:**
+- Is `APP_URL` set in Vercel env vars to your exact public domain (e.g. `https://plutoniumsmp.fun`, no trailing slash)?
+- Is `https://plutoniumsmp.fun/api/auth/discord/callback` (or your `.vercel.app` equivalent) in Discord's Redirects list?
+- Did you redeploy after adding `APP_URL`?
+
+If you have a custom domain and are still using the old `.vercel.app` URL in Discord, add the custom-domain redirect URI — Discord allows multiple entries.
 
 ### Store / leaderboard / announcements are empty
 Run the seed script from Part 4.
