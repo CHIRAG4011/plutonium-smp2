@@ -5,8 +5,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
-import { Search, ShieldBan, ShieldCheck, ShieldAlert, UserCog } from "lucide-react";
+import { Search, ShieldBan, ShieldCheck, ShieldAlert, UserCog, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 
@@ -17,6 +19,13 @@ const ROLE_COLORS: Record<string, string> = {
   user: "border-border text-muted-foreground",
 };
 
+interface RankEdit {
+  userId: string;
+  username: string;
+  activeRank: string;
+  minecraftUsername: string;
+}
+
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const { data, refetch } = useAdminGetUsers({ query: { search, limit: 50 } });
@@ -25,6 +34,8 @@ export default function AdminUsers() {
   const { mutate: setRole, isPending: isSettingRole } = useAdminSetUserRole();
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const [rankEdit, setRankEdit] = useState<RankEdit | null>(null);
+  const [isSavingRank, setIsSavingRank] = useState(false);
 
   const handleBanToggle = (user: any) => {
     if (user.isBanned) {
@@ -43,7 +54,7 @@ export default function AdminUsers() {
 
   const handleRoleChange = (userId: string, username: string, newRole: "user" | "moderator" | "admin") => {
     setRole({ userId, role: newRole }, {
-      onSuccess: (data) => {
+      onSuccess: () => {
         toast({ title: "Role updated", description: `${username} is now ${newRole}` });
         refetch();
       },
@@ -51,6 +62,42 @@ export default function AdminUsers() {
         toast({ title: "Failed to update role", description: err?.message || "An error occurred", variant: "destructive" });
       },
     });
+  };
+
+  const openRankEdit = (u: any) => {
+    setRankEdit({
+      userId: u.id,
+      username: u.username,
+      activeRank: u.activeRank || "",
+      minecraftUsername: u.minecraftUsername || "",
+    });
+  };
+
+  const handleSaveRank = async () => {
+    if (!rankEdit) return;
+    setIsSavingRank(true);
+    try {
+      const token = localStorage.getItem("plutonium_token");
+      const res = await fetch(`/api/admin/users/${rankEdit.userId}/rank`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          activeRank: rankEdit.activeRank || null,
+          minecraftUsername: rankEdit.minecraftUsername || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      toast({ title: "Rank updated", description: `${rankEdit.username}'s rank saved.` });
+      setRankEdit(null);
+      refetch();
+    } catch {
+      toast({ title: "Save failed", variant: "destructive" });
+    } finally {
+      setIsSavingRank(false);
+    }
   };
 
   return (
@@ -98,6 +145,9 @@ export default function AdminUsers() {
                     {u.discordUsername && (
                       <div className="text-xs text-[#5865F2] mt-0.5">Discord: {u.discordUsername}</div>
                     )}
+                    {u.minecraftUsername && (
+                      <div className="text-xs text-green-400 mt-0.5">MC: {u.minecraftUsername}</div>
+                    )}
                     {u.isBanned && (
                       <Badge variant="destructive" className="text-[10px] mt-1">
                         <ShieldBan className="w-2.5 h-2.5 mr-1" />Banned: {u.banReason}
@@ -141,17 +191,29 @@ export default function AdminUsers() {
                     {format(new Date(u.createdAt), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant={u.isBanned ? "outline" : "destructive"}
-                      size="sm"
-                      onClick={() => handleBanToggle(u)}
-                      disabled={isOwner || isBanning || isUnbanning}
-                      className="w-24"
-                    >
-                      {u.isBanned
-                        ? <><ShieldCheck className="w-4 h-4 mr-1" />Unban</>
-                        : <><ShieldBan className="w-4 h-4 mr-1" />Ban</>}
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openRankEdit(u)}
+                        className="gap-1 h-8 px-2 text-xs"
+                        title="Edit rank & Minecraft username"
+                      >
+                        <Trophy className="w-3 h-3 text-yellow-500" />
+                        Rank
+                      </Button>
+                      <Button
+                        variant={u.isBanned ? "outline" : "destructive"}
+                        size="sm"
+                        onClick={() => handleBanToggle(u)}
+                        disabled={isOwner || isBanning || isUnbanning}
+                        className="w-20 h-8"
+                      >
+                        {u.isBanned
+                          ? <><ShieldCheck className="w-3.5 h-3.5 mr-1" />Unban</>
+                          : <><ShieldBan className="w-3.5 h-3.5 mr-1" />Ban</>}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
@@ -159,6 +221,43 @@ export default function AdminUsers() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={!!rankEdit} onOpenChange={(open) => !open && setRankEdit(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-500" />
+              Edit Rank — {rankEdit?.username}
+            </DialogTitle>
+          </DialogHeader>
+          {rankEdit && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>Active Rank</Label>
+                <Input
+                  value={rankEdit.activeRank}
+                  placeholder="VIP, MVP, Legend... (leave blank to clear)"
+                  onChange={(e) => setRankEdit({ ...rankEdit, activeRank: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Minecraft Username</Label>
+                <Input
+                  value={rankEdit.minecraftUsername}
+                  placeholder="Steve123 (leave blank to clear)"
+                  onChange={(e) => setRankEdit({ ...rankEdit, minecraftUsername: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRankEdit(null)}>Cancel</Button>
+            <Button onClick={handleSaveRank} disabled={isSavingRank}>
+              {isSavingRank ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

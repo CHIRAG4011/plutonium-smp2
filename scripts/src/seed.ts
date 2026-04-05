@@ -48,15 +48,15 @@ async function seed() {
   if (!existingLb) {
     await Leaderboard.insertMany([
       { _id: "lb-1", userId: "admin-plutonium-001", username: "PlutoniumAdmin", minecraftUsername: "PlutoniumAdmin", tier: "HT1", kills: 420, activeRank: "Owner", updatedAt: new Date() },
-      { _id: "lb-2", userId: "lb-user-2", username: "HeartThief_X", tier: "HT1", kills: 312, activeRank: "Legend", updatedAt: new Date() },
-      { _id: "lb-3", userId: "lb-user-3", username: "NeonSlayer", tier: "HT2", kills: 287, activeRank: "MVP", updatedAt: new Date() },
-      { _id: "lb-4", userId: "lb-user-4", username: "LifeStealKing", tier: "HT2", kills: 198, activeRank: "Legend", updatedAt: new Date() },
-      { _id: "lb-5", userId: "lb-user-5", username: "GreenReaper", tier: "HT3", kills: 176, activeRank: "MVP", updatedAt: new Date() },
-      { _id: "lb-6", userId: "lb-user-6", username: "AtomicBoom", tier: "HT3", kills: 154, activeRank: "VIP", updatedAt: new Date() },
-      { _id: "lb-7", userId: "lb-user-7", username: "CrystalHunter", tier: "HT4", kills: 132, updatedAt: new Date() },
-      { _id: "lb-8", userId: "lb-user-8", username: "PlutoPvP", tier: "LT1", kills: 98, activeRank: "VIP", updatedAt: new Date() },
-      { _id: "lb-9", userId: "lb-user-9", username: "RadiationX", tier: "LT2", kills: 87, updatedAt: new Date() },
-      { _id: "lb-10", userId: "lb-user-10", username: "NuclearFrost", tier: "LT3", kills: 65, updatedAt: new Date() },
+      { _id: "lb-2", userId: "lb-user-2", username: "HeartThief_X", minecraftUsername: "HeartThief_X", tier: "HT1", kills: 312, activeRank: "Legend", updatedAt: new Date() },
+      { _id: "lb-3", userId: "lb-user-3", username: "NeonSlayer", minecraftUsername: "NeonSlayer", tier: "HT2", kills: 287, activeRank: "MVP", updatedAt: new Date() },
+      { _id: "lb-4", userId: "lb-user-4", username: "LifeStealKing", minecraftUsername: "LifeStealKing", tier: "HT2", kills: 198, activeRank: "Legend", updatedAt: new Date() },
+      { _id: "lb-5", userId: "lb-user-5", username: "GreenReaper", minecraftUsername: "GreenReaper", tier: "HT3", kills: 176, activeRank: "MVP", updatedAt: new Date() },
+      { _id: "lb-6", userId: "lb-user-6", username: "AtomicBoom", minecraftUsername: "AtomicBoom", tier: "HT3", kills: 154, activeRank: "VIP", updatedAt: new Date() },
+      { _id: "lb-7", userId: "lb-user-7", username: "CrystalHunter", minecraftUsername: "CrystalHunter", tier: "HT4", kills: 132, updatedAt: new Date() },
+      { _id: "lb-8", userId: "lb-user-8", username: "PlutoPvP", minecraftUsername: "PlutoPvP", tier: "LT1", kills: 98, activeRank: "VIP", updatedAt: new Date() },
+      { _id: "lb-9", userId: "lb-user-9", username: "RadiationX", minecraftUsername: "RadiationX", tier: "LT2", kills: 87, updatedAt: new Date() },
+      { _id: "lb-10", userId: "lb-user-10", username: "NuclearFrost", minecraftUsername: "NuclearFrost", tier: "LT3", kills: 65, updatedAt: new Date() },
     ]);
     console.log("Created leaderboard entries");
   }

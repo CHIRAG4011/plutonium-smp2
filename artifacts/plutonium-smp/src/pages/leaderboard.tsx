@@ -64,6 +64,9 @@ function PodiumCard({ player, position }: { player: any; position: number }) {
             </div>
             <div>
               <div className="font-display font-black text-sm leading-tight">{player.username}</div>
+              {player.minecraftUsername && (
+                <div className="text-[9px] text-muted-foreground mt-0.5">MC: {player.minecraftUsername}</div>
+              )}
               {player.activeRank && (
                 <Badge className="text-[9px] mt-1 bg-primary/20 text-primary hover:bg-primary/20 border-primary/30">{player.activeRank}</Badge>
               )}

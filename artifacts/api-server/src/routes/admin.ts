@@ -146,6 +146,31 @@ router.post("/users/:id/role", async (req: AuthRequest, res) => {
   }
 });
 
+router.put("/users/:userId/rank", async (req, res) => {
+  try {
+    const { activeRank, minecraftUsername } = req.body;
+    const user = await User.findOne({ _id: req.params.userId });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    const userUpdates: any = { updatedAt: new Date() };
+    if (activeRank !== undefined) userUpdates.activeRank = activeRank || null;
+    if (minecraftUsername !== undefined) userUpdates.minecraftUsername = minecraftUsername || null;
+    await User.updateOne({ _id: req.params.userId }, userUpdates);
+    await Leaderboard.updateOne(
+      { userId: req.params.userId },
+      { ...( activeRank !== undefined ? { activeRank: activeRank || null } : {} ),
+        ...( minecraftUsername !== undefined ? { minecraftUsername: minecraftUsername || null } : {} ),
+        updatedAt: new Date() }
+    ).catch(() => {});
+    res.json({ message: "Rank updated" });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.post("/store/items", async (req, res) => {
   try {
     const { name, description, category, price, currency, imageUrl, images, features, isActive, isFeatured, badge, badgeColor, sortOrder } = req.body;
