@@ -6,7 +6,17 @@ export interface IRank {
   color: string;
   description: string;
   price: number;
+  currency: string;
   features: string[];
+  imageUrl?: string | null;
+  badge?: string | null;
+  badgeColor?: string | null;
+  isFeatured: boolean;
+  sortOrder: number;
+  prefix?: string | null;
+  suffix?: string | null;
+  minecraftPermissions: string[];
+  commands: string[];
   storeItemId: string | null;
   isActive: boolean;
   createdAt: Date;
@@ -19,7 +29,17 @@ const rankSchema = new Schema(
     color: { type: String, default: "#22c55e" },
     description: { type: String, default: "" },
     price: { type: Number, default: 0 },
+    currency: { type: String, default: "usd" },
     features: [{ type: String }],
+    imageUrl: { type: String, default: null },
+    badge: { type: String, default: null },
+    badgeColor: { type: String, default: null },
+    isFeatured: { type: Boolean, default: false },
+    sortOrder: { type: Number, default: 0 },
+    prefix: { type: String, default: null },
+    suffix: { type: String, default: null },
+    minecraftPermissions: [{ type: String }],
+    commands: [{ type: String }],
     storeItemId: { type: String, default: null },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },

@@ -27,3 +27,5 @@ export { Rank } from "./models/Rank.js";
 export type { IRank } from "./models/Rank.js";
 export { Counter } from "./models/Counter.js";
 export type { ICounter } from "./models/Counter.js";
+export { StoreCategory } from "./models/StoreCategory.js";
+export type { IStoreCategory } from "./models/StoreCategory.js";

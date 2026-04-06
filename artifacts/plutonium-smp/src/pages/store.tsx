@@ -1,16 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useGetStoreItems } from "@workspace/api-client-react";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, Check, DollarSign, Search, Star, Package, Sword, Key, Sparkles, Zap, Box, Leaf, Shield } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  ShoppingCart, Check, DollarSign, Search, Package, Sword, Key, Sparkles,
+  Zap, Box, Leaf, Shield, SlidersHorizontal, X, Star,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 
-const CATEGORIES = [
+const BUILTIN_CATEGORIES = [
   { value: "all",         label: "All Items",   icon: Package },
   { value: "ranks",       label: "Ranks",       icon: Sword },
   { value: "crate_keys",  label: "Crate Keys",  icon: Key },
@@ -22,10 +26,17 @@ const CATEGORIES = [
   { value: "permissions", label: "Permissions", icon: Shield },
 ];
 
+function authFetch(path: string) {
+  return fetch(`${window.location.origin}/api${path}`);
+}
+
 export default function Store() {
   const [category, setCategory] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [currency, setCurrency] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("featured");
+  const [customCats, setCustomCats] = useState<any[]>([]);
   const { count } = useCart();
   const { user } = useAuth();
   const { addItem } = useCart();
@@ -36,13 +47,51 @@ export default function Store() {
     return () => clearTimeout(t);
   }, [search]);
 
+  useEffect(() => {
+    authFetch("/admin/store-categories")
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCustomCats(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const allCategories = useMemo(() => [
+    ...BUILTIN_CATEGORIES,
+    ...customCats.filter(c => c.isActive).map(c => ({
+      value: c.value,
+      label: c.name,
+      icon: Package,
+    })),
+  ], [customCats]);
+
   const params: any = {};
   if (category !== "all") params.category = category;
   if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
-  const { data: items, isLoading } = useGetStoreItems(
+  const { data: rawItems, isLoading } = useGetStoreItems(
     Object.keys(params).length ? params : undefined
   );
+
+  const items = useMemo(() => {
+    if (!rawItems) return [];
+    let filtered = rawItems.filter(item => {
+      if (currency === "usd") return item.currency === "usd";
+      if (currency === "owo") return item.currency === "owo";
+      return true;
+    });
+    switch (sortBy) {
+      case "price_asc":  return [...filtered].sort((a, b) => a.price - b.price);
+      case "price_desc": return [...filtered].sort((a, b) => b.price - a.price);
+      case "newest":     return [...filtered].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      case "name":       return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+      case "featured":
+      default:           return [...filtered].sort((a, b) => {
+        if (a.isFeatured === b.isFeatured) return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+        return a.isFeatured ? -1 : 1;
+      });
+    }
+  }, [rawItems, currency, sortBy]);
+
+  const hasFilters = search || currency !== "all" || sortBy !== "featured";
 
   const handleAddToCart = (item: any, e: React.MouseEvent) => {
     e.preventDefault();
@@ -52,6 +101,13 @@ export default function Store() {
     }
     addItem(item);
     toast({ title: "Added to cart!", description: `${item.name} has been added to your cart.` });
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setCurrency("all");
+    setSortBy("featured");
+    setCategory("all");
   };
 
   return (
@@ -84,37 +140,86 @@ export default function Store() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
-        <div className="flex flex-col gap-6 mb-10">
-          <div className="relative max-w-md">
+        {/* Search + sort + currency row */}
+        <div className="flex flex-wrap gap-3 mb-6 items-center">
+          <div className="relative flex-1 min-w-60 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search items..."
-              className="pl-10 bg-card border-border"
+              className="pl-10 bg-card border-border h-10"
             />
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              return (
-                <button
-                  key={cat.value}
-                  onClick={() => setCategory(cat.value)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
-                    category === cat.value
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-card border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {cat.label}
-                </button>
-              );
-            })}
+          <div className="flex gap-2 items-center ml-auto flex-wrap">
+            <SlidersHorizontal className="w-4 h-4 text-muted-foreground hidden sm:block" />
+            <Select value={currency} onValueChange={setCurrency}>
+              <SelectTrigger className="w-36 h-10 bg-card border-border">
+                <SelectValue placeholder="Currency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Currencies</SelectItem>
+                <SelectItem value="usd">
+                  <span className="flex items-center gap-1.5">
+                    <DollarSign className="w-3.5 h-3.5 text-green-500" /> USD ($)
+                  </span>
+                </SelectItem>
+                <SelectItem value="owo">
+                  <span className="flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5 text-yellow-400" /> OWO Coins
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-44 h-10 bg-card border-border">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="featured">Featured First</SelectItem>
+                <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="name">Name (A-Z)</SelectItem>
+              </SelectContent>
+            </Select>
+            {hasFilters && (
+              <Button variant="ghost" size="sm" className="h-10 text-muted-foreground hover:text-foreground" onClick={clearFilters}>
+                <X className="w-3.5 h-3.5 mr-1.5" /> Clear
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Category tabs */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          {allCategories.map(cat => {
+            const Icon = cat.icon;
+            return (
+              <button
+                key={cat.value}
+                onClick={() => setCategory(cat.value)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                  category === cat.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Results count */}
+        {!isLoading && (
+          <p className="text-sm text-muted-foreground mb-4">
+            {items.length} {items.length === 1 ? "item" : "items"}
+            {category !== "all" && ` in ${allCategories.find(c => c.value === category)?.label}`}
+            {search && ` matching "${search}"`}
+          </p>
+        )}
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -122,15 +227,20 @@ export default function Store() {
               <div key={i} className="h-96 rounded-2xl bg-card animate-pulse" />
             ))}
           </div>
-        ) : items?.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="py-24 text-center">
             <Package className="w-16 h-16 text-muted-foreground/20 mx-auto mb-4" />
             <p className="text-xl font-medium mb-2">No items found</p>
-            <p className="text-muted-foreground">Try a different category or search term.</p>
+            <p className="text-muted-foreground mb-4">Try a different category, search term, or filter.</p>
+            {hasFilters && (
+              <Button variant="outline" size="sm" onClick={clearFilters}>
+                <X className="w-3.5 h-3.5 mr-1.5" /> Clear filters
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {items?.map((item, i) => (
+            {items.map((item, i) => (
               <Link key={item.id} href={`/store/${item.id}`}>
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}

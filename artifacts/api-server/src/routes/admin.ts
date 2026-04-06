@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
   User, StoreItem, Purchase, Ticket,
-  Announcement, Coupon, Leaderboard, ServerConfig, CustomRole, Rank,
+  Announcement, Coupon, Leaderboard, ServerConfig, CustomRole, Rank, StoreCategory,
 } from "@workspace/db";
 import { requireAdmin, requireModerator, requirePermission, AuthRequest } from "../lib/auth.js";
 import { generateId } from "../lib/id.js";
@@ -762,25 +762,31 @@ router.get("/ranks", requireAdmin, async (req, res) => {
 
 router.post("/ranks", requireAdmin, async (req, res) => {
   try {
-    const { name, color, description, price, features } = req.body;
+    const {
+      name, color, description, price, currency, features,
+      imageUrl, badge, badgeColor, isFeatured, sortOrder,
+      prefix, suffix, minecraftPermissions, commands, isActive,
+    } = req.body;
     if (!name?.trim()) { res.status(400).json({ error: "Name is required" }); return; }
     const existing = await Rank.findOne({ name: name.trim() });
     if (existing) { res.status(400).json({ error: "A rank with this name already exists" }); return; }
     const rankId = generateId();
     const storeItemId = generateId();
+    const resolvedCurrency = currency || "usd";
     await StoreItem.create({
       _id: storeItemId,
       name: name.trim(),
       description: description?.trim() || `${name.trim()} rank for Plutonium SMP`,
       category: "ranks",
       price: Number(price) || 0,
-      currency: "usd",
+      currency: resolvedCurrency,
       features: Array.isArray(features) ? features : [],
-      isActive: true,
-      isFeatured: false,
-      badge: name.trim(),
-      badgeColor: color || "#22c55e",
-      sortOrder: 0,
+      imageUrl: imageUrl || null,
+      isActive: isActive !== false,
+      isFeatured: isFeatured || false,
+      badge: badge || name.trim(),
+      badgeColor: badgeColor || color || "#22c55e",
+      sortOrder: Number(sortOrder) || 0,
     });
     const rank = await Rank.create({
       _id: rankId,
@@ -788,9 +794,19 @@ router.post("/ranks", requireAdmin, async (req, res) => {
       color: color || "#22c55e",
       description: description?.trim() || "",
       price: Number(price) || 0,
+      currency: resolvedCurrency,
       features: Array.isArray(features) ? features : [],
+      imageUrl: imageUrl || null,
+      badge: badge || null,
+      badgeColor: badgeColor || null,
+      isFeatured: isFeatured || false,
+      sortOrder: Number(sortOrder) || 0,
+      prefix: prefix || null,
+      suffix: suffix || null,
+      minecraftPermissions: Array.isArray(minecraftPermissions) ? minecraftPermissions : [],
+      commands: Array.isArray(commands) ? commands : [],
       storeItemId,
-      isActive: true,
+      isActive: isActive !== false,
     });
     res.json(rank.toJSON());
   } catch (err) {
@@ -801,20 +817,45 @@ router.post("/ranks", requireAdmin, async (req, res) => {
 
 router.put("/ranks/:id", requireAdmin, async (req, res) => {
   try {
-    const { name, color, description, price, features, isActive } = req.body;
+    const {
+      name, color, description, price, currency, features, isActive,
+      imageUrl, badge, badgeColor, isFeatured, sortOrder,
+      prefix, suffix, minecraftPermissions, commands,
+    } = req.body;
     const rank = await Rank.findOne({ _id: req.params.id });
     if (!rank) { res.status(404).json({ error: "Rank not found" }); return; }
-    const updates: any = { name: name?.trim() ?? rank.name, color: color ?? rank.color, description: description?.trim() ?? rank.description, price: price !== undefined ? Number(price) : rank.price, features: Array.isArray(features) ? features : rank.features, isActive: isActive !== undefined ? isActive : rank.isActive };
+    const updates: any = {
+      name: name?.trim() ?? rank.name,
+      color: color ?? rank.color,
+      description: description?.trim() ?? rank.description,
+      price: price !== undefined ? Number(price) : rank.price,
+      currency: currency ?? rank.currency ?? "usd",
+      features: Array.isArray(features) ? features : rank.features,
+      isActive: isActive !== undefined ? isActive : rank.isActive,
+      imageUrl: imageUrl !== undefined ? (imageUrl || null) : rank.imageUrl,
+      badge: badge !== undefined ? (badge || null) : rank.badge,
+      badgeColor: badgeColor !== undefined ? (badgeColor || null) : rank.badgeColor,
+      isFeatured: isFeatured !== undefined ? isFeatured : rank.isFeatured,
+      sortOrder: sortOrder !== undefined ? Number(sortOrder) : rank.sortOrder,
+      prefix: prefix !== undefined ? (prefix || null) : rank.prefix,
+      suffix: suffix !== undefined ? (suffix || null) : rank.suffix,
+      minecraftPermissions: Array.isArray(minecraftPermissions) ? minecraftPermissions : rank.minecraftPermissions,
+      commands: Array.isArray(commands) ? commands : rank.commands,
+    };
     const updated = await Rank.findOneAndUpdate({ _id: req.params.id }, updates, { new: true });
     if (rank.storeItemId) {
       await StoreItem.findOneAndUpdate({ _id: rank.storeItemId }, {
         name: updates.name,
         description: updates.description || `${updates.name} rank for Plutonium SMP`,
         price: updates.price,
+        currency: updates.currency,
         features: updates.features,
+        imageUrl: updates.imageUrl,
         isActive: updates.isActive,
-        badge: updates.name,
-        badgeColor: updates.color,
+        isFeatured: updates.isFeatured,
+        sortOrder: updates.sortOrder,
+        badge: updates.badge || updates.name,
+        badgeColor: updates.badgeColor || updates.color,
         updatedAt: new Date(),
       });
     }
@@ -834,6 +875,74 @@ router.delete("/ranks/:id", requireAdmin, async (req, res) => {
     }
     await Rank.deleteOne({ _id: req.params.id });
     res.json({ message: "Rank deleted" });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/store-categories", async (req, res) => {
+  try {
+    const cats = await StoreCategory.find().sort({ sortOrder: 1, createdAt: 1 });
+    res.json(cats.map((c) => c.toJSON()));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/store-categories", requireAdmin, async (req, res) => {
+  try {
+    const { name, value, icon, color, sortOrder } = req.body;
+    if (!name?.trim() || !value?.trim()) {
+      res.status(400).json({ error: "Name and value are required" });
+      return;
+    }
+    const slug = value.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+    const existing = await StoreCategory.findOne({ value: slug });
+    if (existing) { res.status(400).json({ error: "A category with this slug already exists" }); return; }
+    const cat = await StoreCategory.create({
+      _id: generateId(),
+      name: name.trim(),
+      value: slug,
+      icon: icon || null,
+      color: color || "#6366f1",
+      sortOrder: Number(sortOrder) || 0,
+      isActive: true,
+    });
+    res.json(cat.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/store-categories/:id", requireAdmin, async (req, res) => {
+  try {
+    const { name, icon, color, sortOrder, isActive } = req.body;
+    const updated = await StoreCategory.findOneAndUpdate(
+      { _id: req.params.id },
+      {
+        ...(name !== undefined && { name: name.trim() }),
+        ...(icon !== undefined && { icon: icon || null }),
+        ...(color !== undefined && { color }),
+        ...(sortOrder !== undefined && { sortOrder: Number(sortOrder) }),
+        ...(isActive !== undefined && { isActive }),
+      },
+      { new: true }
+    );
+    if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(updated.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/store-categories/:id", requireAdmin, async (req, res) => {
+  try {
+    await StoreCategory.deleteOne({ _id: req.params.id });
+    res.json({ message: "Category deleted" });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
