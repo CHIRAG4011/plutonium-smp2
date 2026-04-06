@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useGetUserPurchases } from "@workspace/api-client-react";
 import { Redirect, Link, useSearch, useLocation } from "wouter";
@@ -11,7 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { User, Calendar, Shield, ShoppingBag, Package, Clock, CheckCircle, XCircle, RotateCcw, Pencil, Check, X, ExternalLink, Upload } from "lucide-react";
+import {
+  User, Calendar, Shield, ShoppingBag, Package, Clock,
+  CheckCircle, XCircle, RotateCcw, Pencil, Check, X,
+  ExternalLink, Upload, Camera, Loader2,
+} from "lucide-react";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; icon: JSX.Element; className: string }> = {
@@ -40,6 +44,9 @@ export default function Dashboard() {
   const [editingMc, setEditingMc] = useState(false);
   const [mcInput, setMcInput] = useState("");
   const [mcSaving, setMcSaving] = useState(false);
+
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(search);
@@ -91,8 +98,52 @@ export default function Dashboard() {
     }
   }
 
+  async function handleAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image (PNG, JPG, WEBP, GIF).", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Maximum size is 2MB. Please compress the image first.", variant: "destructive" });
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const imageDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch("/api/users/me/profile-picture", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("plutonium_token") || ""}`,
+        },
+        body: JSON.stringify({ imageDataUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+
+      await refetchUser();
+      toast({ title: "Profile picture updated!", description: "Your new photo is now live." });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
+
   const pending = purchases?.filter(p => p.status === "pending") ?? [];
   const completed = purchases?.filter(p => p.status === "completed") ?? [];
+
+  const isEmailUser = !user.discordAvatar;
+  const avatarSrc = (user as any).avatarUrl || user.discordAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -103,11 +154,55 @@ export default function Dashboard() {
         {/* Profile Card */}
         <Card className="col-span-1 border-border bg-card shadow-lg">
           <CardHeader className="text-center pb-2">
-            <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-primary/20">
-              <AvatarImage src={user.discordAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
-              <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
-            </Avatar>
+            <div className="relative w-24 h-24 mx-auto mb-4">
+              <Avatar className="w-24 h-24 border-4 border-primary/20">
+                <AvatarImage src={avatarSrc} />
+                <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
+              </Avatar>
+
+              {/* Upload overlay — only for email (non-Discord) users */}
+              {isEmailUser && (
+                <>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    onChange={handleAvatarFile}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+                    disabled={avatarUploading}
+                    className="absolute inset-0 rounded-full flex items-center justify-center bg-black/60 opacity-0 hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-default"
+                    title="Change profile picture"
+                  >
+                    {avatarUploading ? (
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    ) : (
+                      <Camera className="w-6 h-6 text-white" />
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+
             <CardTitle className="text-2xl font-bold">{user.username}</CardTitle>
+
+            {/* Change photo label for email users */}
+            {isEmailUser && (
+              <button
+                onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="text-xs text-muted-foreground hover:text-primary transition-colors mt-1 flex items-center justify-center gap-1 mx-auto disabled:opacity-50"
+              >
+                {avatarUploading ? (
+                  <><Loader2 className="w-3 h-3 animate-spin" /> Uploading...</>
+                ) : (
+                  <><Camera className="w-3 h-3" /> Change photo</>
+                )}
+              </button>
+            )}
+
             <div className="flex justify-center gap-2 mt-2 flex-wrap">
               <Badge variant="outline" className="border-primary text-primary capitalize">{user.role}</Badge>
               {user.activeRank && <Badge variant="secondary">{user.activeRank}</Badge>}
