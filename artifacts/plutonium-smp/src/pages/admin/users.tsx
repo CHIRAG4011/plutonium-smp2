@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminGetUsers, useAdminBanUser, useAdminUnbanUser, useAdminSetUserRole } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
-import { Search, ShieldBan, ShieldCheck, ShieldAlert, UserCog, Trophy } from "lucide-react";
+import { Search, ShieldBan, ShieldCheck, ShieldAlert, UserCog, Trophy, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 
@@ -19,11 +19,20 @@ const ROLE_COLORS: Record<string, string> = {
   user: "border-border text-muted-foreground",
 };
 
-interface RankEdit {
+function authFetch(path: string, opts: RequestInit = {}) {
+  const token = localStorage.getItem("plutonium_token") || "";
+  return fetch(`${window.location.origin}/api${path}`, {
+    ...opts,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
+  });
+}
+
+interface RankRoleEdit {
   userId: string;
   username: string;
   activeRank: string;
   minecraftUsername: string;
+  customRole: string;
 }
 
 export default function AdminUsers() {
@@ -34,8 +43,17 @@ export default function AdminUsers() {
   const { mutate: setRole, isPending: isSettingRole } = useAdminSetUserRole();
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
-  const [rankEdit, setRankEdit] = useState<RankEdit | null>(null);
-  const [isSavingRank, setIsSavingRank] = useState(false);
+
+  const [rankRoleEdit, setRankRoleEdit] = useState<RankRoleEdit | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [ranks, setRanks] = useState<any[]>([]);
+  const [customRoles, setCustomRoles] = useState<any[]>([]);
+
+  useEffect(() => {
+    authFetch("/admin/ranks").then(r => r.ok ? r.json() : []).then(setRanks).catch(() => {});
+    authFetch("/admin/custom-roles").then(r => r.ok ? r.json() : []).then(setCustomRoles).catch(() => {});
+  }, []);
 
   const handleBanToggle = (user: any) => {
     if (user.isBanned) {
@@ -64,39 +82,36 @@ export default function AdminUsers() {
     });
   };
 
-  const openRankEdit = (u: any) => {
-    setRankEdit({
+  const openEdit = (u: any) => {
+    setRankRoleEdit({
       userId: u.id,
       username: u.username,
       activeRank: u.activeRank || "",
       minecraftUsername: u.minecraftUsername || "",
+      customRole: u.customRole || "",
     });
   };
 
-  const handleSaveRank = async () => {
-    if (!rankEdit) return;
-    setIsSavingRank(true);
+  const handleSave = async () => {
+    if (!rankRoleEdit) return;
+    setIsSaving(true);
     try {
-      const token = localStorage.getItem("plutonium_token");
-      const res = await fetch(`/api/admin/users/${rankEdit.userId}/rank`, {
+      const res = await authFetch(`/admin/users/${rankRoleEdit.userId}/rank`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
-          activeRank: rankEdit.activeRank || null,
-          minecraftUsername: rankEdit.minecraftUsername || null,
+          activeRank: rankRoleEdit.activeRank || null,
+          minecraftUsername: rankRoleEdit.minecraftUsername || null,
+          customRole: rankRoleEdit.customRole || null,
         }),
       });
       if (!res.ok) throw new Error("Failed to save");
-      toast({ title: "Rank updated", description: `${rankEdit.username}'s rank saved.` });
-      setRankEdit(null);
+      toast({ title: "User updated", description: `${rankRoleEdit.username}'s rank and role saved.` });
+      setRankRoleEdit(null);
       refetch();
     } catch {
       toast({ title: "Save failed", variant: "destructive" });
     } finally {
-      setIsSavingRank(false);
+      setIsSaving(false);
     }
   };
 
@@ -108,7 +123,7 @@ export default function AdminUsers() {
             <UserCog className="w-8 h-8 text-primary" />
             Manage Users
           </h1>
-          <p className="text-muted-foreground">View, manage roles, and moderate player accounts.</p>
+          <p className="text-muted-foreground">View, manage roles, ranks and moderate player accounts.</p>
         </div>
         <div className="relative w-72">
           <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
@@ -126,8 +141,9 @@ export default function AdminUsers() {
           <TableHeader className="bg-background/50">
             <TableRow className="border-border">
               <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Active Rank</TableHead>
+              <TableHead>System Role</TableHead>
+              <TableHead>Custom Role</TableHead>
+              <TableHead>Rank</TableHead>
               <TableHead>OWO</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -180,8 +196,31 @@ export default function AdminUsers() {
                     )}
                   </TableCell>
                   <TableCell>
+                    {u.customRole ? (
+                      (() => {
+                        const cr = customRoles.find(r => r.id === u.customRole);
+                        return cr ? (
+                          <Badge variant="outline" className="text-xs" style={{ borderColor: cr.color, color: cr.color }}>
+                            <Shield className="w-2.5 h-2.5 mr-1" />{cr.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground font-mono">{u.customRole.slice(0, 8)}…</span>
+                        );
+                      })()
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     {u.activeRank ? (
-                      <Badge className="bg-primary/20 text-primary">{u.activeRank}</Badge>
+                      (() => {
+                        const r = ranks.find(rk => rk.name === u.activeRank);
+                        return (
+                          <Badge className="text-xs" style={{ background: r ? `${r.color}20` : undefined, color: r?.color, borderColor: r?.color }}>
+                            <Trophy className="w-2.5 h-2.5 mr-1" />{u.activeRank}
+                          </Badge>
+                        );
+                      })()
                     ) : (
                       <span className="text-muted-foreground text-sm">—</span>
                     )}
@@ -195,12 +234,12 @@ export default function AdminUsers() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => openRankEdit(u)}
+                        onClick={() => openEdit(u)}
                         className="gap-1 h-8 px-2 text-xs"
-                        title="Edit rank & Minecraft username"
+                        title="Edit rank & role"
                       >
                         <Trophy className="w-3 h-3 text-yellow-500" />
-                        Rank
+                        Edit
                       </Button>
                       <Button
                         variant={u.isBanned ? "outline" : "destructive"}
@@ -222,38 +261,82 @@ export default function AdminUsers() {
         </Table>
       </div>
 
-      <Dialog open={!!rankEdit} onOpenChange={(open) => !open && setRankEdit(null)}>
+      <Dialog open={!!rankRoleEdit} onOpenChange={(open) => !open && setRankRoleEdit(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
-              Edit Rank — {rankEdit?.username}
+              Edit — {rankRoleEdit?.username}
             </DialogTitle>
           </DialogHeader>
-          {rankEdit && (
+          {rankRoleEdit && (
             <div className="space-y-4 py-2">
               <div className="space-y-1.5">
-                <Label>Active Rank</Label>
-                <Input
-                  value={rankEdit.activeRank}
-                  placeholder="VIP, MVP, Legend... (leave blank to clear)"
-                  onChange={(e) => setRankEdit({ ...rankEdit, activeRank: e.target.value })}
-                />
+                <Label className="flex items-center gap-1.5 text-sm">
+                  <Trophy className="w-3.5 h-3.5 text-yellow-500" /> Rank
+                </Label>
+                <Select
+                  value={rankRoleEdit.activeRank || "__none__"}
+                  onValueChange={(val) => setRankRoleEdit({ ...rankRoleEdit, activeRank: val === "__none__" ? "" : val })}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select a rank..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— No rank —</SelectItem>
+                    {ranks.map(r => (
+                      <SelectItem key={r.id} value={r.name}>
+                        <span className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: r.color }} />
+                          {r.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Ranks are cosmetic — no special permissions.</p>
               </div>
+
               <div className="space-y-1.5">
-                <Label>Minecraft Username</Label>
+                <Label className="flex items-center gap-1.5 text-sm">
+                  <Shield className="w-3.5 h-3.5 text-primary" /> Custom Role
+                </Label>
+                <Select
+                  value={rankRoleEdit.customRole || "__none__"}
+                  onValueChange={(val) => setRankRoleEdit({ ...rankRoleEdit, customRole: val === "__none__" ? "" : val })}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select a role..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— No custom role —</SelectItem>
+                    {customRoles.map(r => (
+                      <SelectItem key={r.id} value={r.id}>
+                        <span className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: r.color }} />
+                          {r.name} ({r.permissions?.length ?? 0} perms)
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Roles grant admin panel permissions.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm">Minecraft Username</Label>
                 <Input
-                  value={rankEdit.minecraftUsername}
+                  value={rankRoleEdit.minecraftUsername}
                   placeholder="Steve123 (leave blank to clear)"
-                  onChange={(e) => setRankEdit({ ...rankEdit, minecraftUsername: e.target.value })}
+                  onChange={(e) => setRankRoleEdit({ ...rankRoleEdit, minecraftUsername: e.target.value })}
                 />
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRankEdit(null)}>Cancel</Button>
-            <Button onClick={handleSaveRank} disabled={isSavingRank}>
-              {isSavingRank ? "Saving..." : "Save"}
+            <Button variant="outline" onClick={() => setRankRoleEdit(null)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

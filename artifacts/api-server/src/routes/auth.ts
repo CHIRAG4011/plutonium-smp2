@@ -244,6 +244,13 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
     }
     const safeUser = user.toJSON() as any;
     delete safeUser.passwordHash;
+    if (safeUser.customRole) {
+      const { CustomRole } = await import("@workspace/db");
+      const roleDoc = await CustomRole.findOne({ _id: safeUser.customRole });
+      if (roleDoc) {
+        safeUser.customRoleData = roleDoc.toJSON();
+      }
+    }
     res.json(safeUser);
   } catch (err) {
     req.log.error(err);

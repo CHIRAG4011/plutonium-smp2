@@ -205,6 +205,15 @@ export default function Dashboard() {
 
             <div className="flex justify-center gap-2 mt-2 flex-wrap">
               <Badge variant="outline" className="border-primary text-primary capitalize">{user.role}</Badge>
+              {(user as any).customRoleData && (
+                <Badge
+                  variant="outline"
+                  className="text-xs font-semibold"
+                  style={{ borderColor: (user as any).customRoleData.color, color: (user as any).customRoleData.color }}
+                >
+                  {(user as any).customRoleData.name}
+                </Badge>
+              )}
               {user.activeRank && <Badge variant="secondary">{user.activeRank}</Badge>}
               {user.discordUsername && (
                 <Badge variant="outline" className="border-[#5865F2] text-[#5865F2] text-xs">

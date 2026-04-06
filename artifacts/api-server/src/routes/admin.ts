@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
   User, StoreItem, Purchase, Ticket,
-  Announcement, Coupon, Leaderboard, ServerConfig, CustomRole,
+  Announcement, Coupon, Leaderboard, ServerConfig, CustomRole, Rank,
 } from "@workspace/db";
 import { requireAdmin, requireModerator, AuthRequest } from "../lib/auth.js";
 import { generateId } from "../lib/id.js";
@@ -247,7 +247,12 @@ router.get("/tickets", async (req, res) => {
 router.get("/purchases", async (req, res) => {
   try {
     const purchases = await Purchase.find().sort({ createdAt: -1 });
-    res.json(purchases.map((p) => p.toJSON()));
+    res.json(purchases.map((p) => {
+      const obj = p.toJSON() as any;
+      obj.hasPaymentProof = !!obj.paymentProofUrl;
+      delete obj.paymentProofUrl;
+      return obj;
+    }));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -716,6 +721,96 @@ router.delete("/custom-roles/:id", requireAdmin, async (req, res) => {
   try {
     await CustomRole.deleteOne({ _id: req.params.id });
     res.json({ message: "Role deleted" });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/ranks", requireAdmin, async (req, res) => {
+  try {
+    const ranks = await Rank.find().sort({ createdAt: 1 });
+    res.json(ranks.map((r) => r.toJSON()));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/ranks", requireAdmin, async (req, res) => {
+  try {
+    const { name, color, description, price, features } = req.body;
+    if (!name?.trim()) { res.status(400).json({ error: "Name is required" }); return; }
+    const existing = await Rank.findOne({ name: name.trim() });
+    if (existing) { res.status(400).json({ error: "A rank with this name already exists" }); return; }
+    const rankId = generateId();
+    const storeItemId = generateId();
+    await StoreItem.create({
+      _id: storeItemId,
+      name: name.trim(),
+      description: description?.trim() || `${name.trim()} rank for Plutonium SMP`,
+      category: "ranks",
+      price: Number(price) || 0,
+      currency: "usd",
+      features: Array.isArray(features) ? features : [],
+      isActive: true,
+      isFeatured: false,
+      badge: name.trim(),
+      badgeColor: color || "#22c55e",
+      sortOrder: 0,
+    });
+    const rank = await Rank.create({
+      _id: rankId,
+      name: name.trim(),
+      color: color || "#22c55e",
+      description: description?.trim() || "",
+      price: Number(price) || 0,
+      features: Array.isArray(features) ? features : [],
+      storeItemId,
+      isActive: true,
+    });
+    res.json(rank.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/ranks/:id", requireAdmin, async (req, res) => {
+  try {
+    const { name, color, description, price, features, isActive } = req.body;
+    const rank = await Rank.findOne({ _id: req.params.id });
+    if (!rank) { res.status(404).json({ error: "Rank not found" }); return; }
+    const updates: any = { name: name?.trim() ?? rank.name, color: color ?? rank.color, description: description?.trim() ?? rank.description, price: price !== undefined ? Number(price) : rank.price, features: Array.isArray(features) ? features : rank.features, isActive: isActive !== undefined ? isActive : rank.isActive };
+    const updated = await Rank.findOneAndUpdate({ _id: req.params.id }, updates, { new: true });
+    if (rank.storeItemId) {
+      await StoreItem.findOneAndUpdate({ _id: rank.storeItemId }, {
+        name: updates.name,
+        description: updates.description || `${updates.name} rank for Plutonium SMP`,
+        price: updates.price,
+        features: updates.features,
+        isActive: updates.isActive,
+        badge: updates.name,
+        badgeColor: updates.color,
+        updatedAt: new Date(),
+      });
+    }
+    res.json(updated?.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/ranks/:id", requireAdmin, async (req, res) => {
+  try {
+    const rank = await Rank.findOne({ _id: req.params.id });
+    if (!rank) { res.status(404).json({ error: "Rank not found" }); return; }
+    if (rank.storeItemId) {
+      await StoreItem.deleteOne({ _id: rank.storeItemId });
+    }
+    await Rank.deleteOne({ _id: req.params.id });
+    res.json({ message: "Rank deleted" });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

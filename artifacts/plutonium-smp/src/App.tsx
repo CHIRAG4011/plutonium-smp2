@@ -34,6 +34,7 @@ import AdminCoupons from "@/pages/admin/coupons";
 import AdminLeaderboard from "@/pages/admin/leaderboard";
 import AdminSettings from "@/pages/admin/settings";
 import AdminRoles from "@/pages/admin/roles";
+import AdminRanks from "@/pages/admin/ranks";
 
 import NotFound from "@/pages/not-found";
 
@@ -68,6 +69,7 @@ function Router() {
       <Route path="/admin/leaderboard">{() => <AdminLayout><AdminLeaderboard /></AdminLayout>}</Route>
       <Route path="/admin/settings">{() => <AdminLayout><AdminSettings /></AdminLayout>}</Route>
       <Route path="/admin/roles">{() => <AdminLayout><AdminRoles /></AdminLayout>}</Route>
+      <Route path="/admin/ranks">{() => <AdminLayout><AdminRanks /></AdminLayout>}</Route>
 
       <Route component={NotFound} />
     </Switch>

@@ -50,7 +50,7 @@ export default function AdminPurchases() {
     completed: purchases?.filter(p => p.status === "completed").length ?? 0,
   };
 
-  const proofCount = purchases?.filter((p: any) => p.paymentProofUrl).length ?? 0;
+  const proofCount = purchases?.filter((p: any) => p.hasPaymentProof).length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -135,7 +135,7 @@ export default function AdminPurchases() {
                 </TableCell>
                 <TableCell className="font-bold">${(p.pricePaid / 100).toFixed(2)}</TableCell>
                 <TableCell>
-                  {(p as any).paymentProofUrl ? (
+                  {(p as any).hasPaymentProof ? (
                     <Badge variant="outline" className="text-green-500 border-green-500 bg-green-500/10 text-xs gap-1">
                       <ImageIcon className="w-3 h-3" /> Submitted
                     </Badge>
