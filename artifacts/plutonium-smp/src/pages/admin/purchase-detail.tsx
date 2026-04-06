@@ -13,7 +13,7 @@ import {
   ArrowLeft, CheckCircle, Clock, XCircle, RotateCcw,
   User, ShoppingBag, Tag, Calendar, CreditCard,
   ImageIcon, ExternalLink, AlertCircle, Package,
-  FileCheck, Zap,
+  FileCheck, Zap, ShieldCheck,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -55,6 +55,13 @@ function getStageIndex(p: any): number {
   return 0;
 }
 
+function hasPermission(user: any, permission: string): boolean {
+  if (!user) return false;
+  if (["admin", "owner"].includes(user.role)) return true;
+  const perms: string[] = user.customRoleData?.permissions || [];
+  return perms.includes(permission);
+}
+
 export default function AdminPurchaseDetail() {
   const [, params] = useRoute("/admin/purchases/:id");
   const [, setLocation] = useLocation();
@@ -63,10 +70,13 @@ export default function AdminPurchaseDetail() {
   const id = params?.id;
 
   const isAdmin = user?.role === "admin" || user?.role === "owner";
+  const canVerifyPayment = hasPermission(user, "verify_payment");
+  const canManagePurchases = hasPermission(user, "manage_purchases") || isAdmin;
 
   const [statusUpdate, setStatusUpdate] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const { data: purchase, isLoading, refetch } = useQuery({
     queryKey: ["admin-purchase", id],
@@ -99,6 +109,21 @@ export default function AdminPurchaseDetail() {
     }
   };
 
+  const handleVerifyPayment = async () => {
+    if (!canVerifyPayment) return;
+    setVerifying(true);
+    try {
+      const r = await authFetch(`/admin/purchases/${id}/verify`, { method: "POST" });
+      if (!r.ok) throw new Error((await r.json()).error);
+      toast({ title: "Payment verified", description: "Order has been marked as completed." });
+      refetch();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -127,6 +152,7 @@ export default function AdminPurchaseDetail() {
   const p = purchase;
   const currentStage = getStageIndex(p);
   const statusCfg = STATUS_MAP[p.status as keyof typeof STATUS_MAP] || STATUS_MAP.pending;
+  const canVerifyThisOrder = canVerifyPayment && p.status === "pending" && p.paymentProofUrl;
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -141,7 +167,19 @@ export default function AdminPurchaseDetail() {
             <span>{p.orderNumber || p.id}</span>
           </p>
         </div>
-        <StatusBadge status={p.status} />
+        <div className="flex items-center gap-3">
+          {canVerifyThisOrder && (
+            <Button
+              onClick={handleVerifyPayment}
+              disabled={verifying}
+              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              {verifying ? "Verifying..." : "Verify Payment"}
+            </Button>
+          )}
+          <StatusBadge status={p.status} />
+        </div>
       </div>
 
       {/* Stage progress bar */}
@@ -172,6 +210,29 @@ export default function AdminPurchaseDetail() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Verify Payment Banner — shown when proof is submitted but not yet verified */}
+      {canVerifyPayment && p.status === "pending" && p.paymentProofUrl && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="w-5 h-5 text-green-500" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-green-600 dark:text-green-400">Payment proof submitted</p>
+              <p className="text-xs text-muted-foreground">Review the screenshot below, then verify to complete this order.</p>
+            </div>
+          </div>
+          <Button
+            onClick={handleVerifyPayment}
+            disabled={verifying}
+            className="gap-2 bg-green-600 hover:bg-green-700 text-white flex-shrink-0"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            {verifying ? "Verifying..." : "Verify Payment"}
+          </Button>
         </div>
       )}
 
@@ -295,6 +356,42 @@ export default function AdminPurchaseDetail() {
 
         {/* Right sidebar */}
         <div className="space-y-5">
+          {/* Verify Payment quick action */}
+          {canVerifyPayment && (
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center gap-2 bg-background/30">
+                <ShieldCheck className="w-4 h-4 text-green-500" />
+                <span className="font-semibold text-sm">Verify Payment</span>
+              </div>
+              <div className="p-5 space-y-3">
+                {p.status === "completed" ? (
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-primary/10 border border-primary/30">
+                    <CheckCircle className="w-4 h-4 text-primary" />
+                    <span className="text-sm text-primary font-medium">Already verified</span>
+                  </div>
+                ) : !p.paymentProofUrl ? (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Waiting for the customer to submit payment proof before you can verify.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Review the payment proof image on the left, then click to approve and complete this order.
+                    </p>
+                    <Button
+                      onClick={handleVerifyPayment}
+                      disabled={verifying || p.status !== "pending"}
+                      className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      {verifying ? "Verifying..." : "Approve & Complete"}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {isAdmin && (
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <div className="px-5 py-4 border-b border-border flex items-center gap-2 bg-background/30">

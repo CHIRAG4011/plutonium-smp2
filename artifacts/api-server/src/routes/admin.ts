@@ -3,7 +3,7 @@ import {
   User, StoreItem, Purchase, Ticket,
   Announcement, Coupon, Leaderboard, ServerConfig, CustomRole, Rank,
 } from "@workspace/db";
-import { requireAdmin, requireModerator, AuthRequest } from "../lib/auth.js";
+import { requireAdmin, requireModerator, requirePermission, AuthRequest } from "../lib/auth.js";
 import { generateId } from "../lib/id.js";
 import bcrypt from "bcryptjs";
 
@@ -286,6 +286,29 @@ router.put("/purchases/:id/status", requireAdmin, async (req, res) => {
     );
     if (!updated) { res.status(404).json({ error: "Not found" }); return; }
     res.json(updated.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/purchases/:id/verify", requirePermission("verify_payment"), async (req: AuthRequest, res) => {
+  try {
+    const purchase = await Purchase.findOne({ _id: req.params.id });
+    if (!purchase) { res.status(404).json({ error: "Not found" }); return; }
+    if (purchase.status !== "pending") {
+      res.status(400).json({ error: "Only pending purchases can be verified" });
+      return;
+    }
+    const updated = await Purchase.findOneAndUpdate(
+      { _id: req.params.id },
+      {
+        status: "completed",
+        notes: `Payment verified by ${req.user?.username || "admin"} on ${new Date().toISOString()}`,
+      },
+      { new: true }
+    );
+    res.json(updated!.toJSON());
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

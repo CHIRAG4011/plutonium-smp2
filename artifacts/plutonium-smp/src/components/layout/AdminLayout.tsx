@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {
   LayoutDashboard, Users, ShoppingBag, Ticket, CreditCard,
-  Megaphone, Tag, ShieldCheck, Trophy, Settings, Shield, Star,
+  Megaphone, Tag, ShieldCheck, Trophy, Settings, Shield, Star, Wallet,
 } from "lucide-react";
 
 const ADMIN_ROLES = ["admin", "owner"] as const;
@@ -11,6 +11,18 @@ const MOD_ROLES = ["moderator", "admin", "owner"] as const;
 
 function isAdmin(role?: string) { return ADMIN_ROLES.includes(role as any); }
 function isMod(role?: string) { return MOD_ROLES.includes(role as any); }
+
+function getUserPermissions(user: any): string[] {
+  if (!user) return [];
+  if (isAdmin(user.role)) return ["*"];
+  return user.customRoleData?.permissions || [];
+}
+
+function canAccess(permissions: string[], requiredPermission?: string): boolean {
+  if (!requiredPermission) return true;
+  if (permissions.includes("*")) return true;
+  return permissions.includes(requiredPermission);
+}
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
@@ -31,24 +43,33 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  const permissions = getUserPermissions(user);
+
   const allNavItems = [
-    { name: "Dashboard",    href: "/admin/dashboard",     icon: LayoutDashboard, adminOnly: false },
-    { name: "Users",        href: "/admin/users",          icon: Users,           adminOnly: true  },
-    { name: "Leaderboard",  href: "/admin/leaderboard",    icon: Trophy,          adminOnly: false },
-    { name: "Store Items",  href: "/admin/store",          icon: ShoppingBag,     adminOnly: true  },
-    { name: "Tickets",      href: "/admin/tickets",        icon: Ticket,          adminOnly: false },
-    { name: "Purchases",    href: "/admin/purchases",      icon: CreditCard,      adminOnly: true  },
-    { name: "Announcements",href: "/admin/announcements",  icon: Megaphone,       adminOnly: false },
-    { name: "Coupons",      href: "/admin/coupons",        icon: Tag,             adminOnly: false },
-    { name: "Ranks",        href: "/admin/ranks",          icon: Star,            adminOnly: true  },
-    { name: "Custom Roles", href: "/admin/roles",          icon: Shield,          adminOnly: true  },
-    { name: "Settings",     href: "/admin/settings",       icon: Settings,        adminOnly: true  },
+    { name: "Dashboard",    href: "/admin/dashboard",     icon: LayoutDashboard, permission: "view_dashboard"    },
+    { name: "Users",        href: "/admin/users",          icon: Users,           permission: "view_users"        },
+    { name: "Leaderboard",  href: "/admin/leaderboard",    icon: Trophy,          permission: "view_leaderboard"  },
+    { name: "Store Items",  href: "/admin/store",          icon: ShoppingBag,     permission: "view_store"        },
+    { name: "Tickets",      href: "/admin/tickets",        icon: Ticket,          permission: "view_tickets"      },
+    { name: "Purchases",    href: "/admin/purchases",      icon: CreditCard,      permission: "view_purchases"    },
+    { name: "Announcements",href: "/admin/announcements",  icon: Megaphone,       permission: "view_announcements"},
+    { name: "Coupons",      href: "/admin/coupons",        icon: Tag,             permission: "view_coupons"      },
+    { name: "Currency",     href: "/admin/currency",       icon: Wallet,          permission: "view_currency"     },
+    { name: "Ranks",        href: "/admin/ranks",          icon: Star,            permission: "view_ranks"        },
+    { name: "Custom Roles", href: "/admin/roles",          icon: Shield,          permission: "view_roles"        },
+    { name: "Settings",     href: "/admin/settings",       icon: Settings,        permission: "view_settings"     },
   ];
 
-  const navItems = allNavItems.filter(item => !item.adminOnly || isAdmin(user.role));
+  const navItems = allNavItems.filter(item => {
+    if (isAdmin(user.role)) return true;
+    return canAccess(permissions, item.permission);
+  });
 
   const roleLabel = user.role === "owner" ? "Owner" : user.role === "admin" ? "Admin" : "Moderator";
   const roleBg = user.role === "owner" ? "text-red-400" : user.role === "admin" ? "text-primary" : "text-blue-400";
+
+  const customRoleName = (user as any).customRoleData?.name;
+  const customRoleColor = (user as any).customRoleData?.color;
 
   return (
     <div className="flex flex-col md:flex-row min-h-[calc(100vh-80px)]">
@@ -56,6 +77,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <div className="mb-2 px-3 py-2">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Admin Portal</p>
           <p className={`text-xs font-semibold mt-1 ${roleBg}`}>{user.username} · {roleLabel}</p>
+          {customRoleName && (
+            <p className="text-xs mt-0.5 font-medium" style={{ color: customRoleColor || "#6366f1" }}>
+              {customRoleName}
+            </p>
+          )}
         </div>
         <nav className="space-y-1">
           {navItems.map((item) => {

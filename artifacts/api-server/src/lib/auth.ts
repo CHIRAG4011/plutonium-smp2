@@ -64,3 +64,34 @@ export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunctio
   }
   next();
 }
+
+export function requirePermission(permission: string) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    if (["admin", "owner"].includes(req.user.role)) {
+      next();
+      return;
+    }
+    (async () => {
+      try {
+        const { User, CustomRole } = await import("@workspace/db");
+        const user = await User.findOne({ _id: req.user!.id });
+        if (!user || !user.customRole) {
+          res.status(403).json({ error: "Forbidden: missing permission " + permission });
+          return;
+        }
+        const role = await CustomRole.findOne({ _id: user.customRole });
+        if (!role || !(role.permissions as string[]).includes(permission)) {
+          res.status(403).json({ error: "Forbidden: missing permission " + permission });
+          return;
+        }
+        next();
+      } catch {
+        res.status(500).json({ error: "Internal server error" });
+      }
+    })();
+  };
+}

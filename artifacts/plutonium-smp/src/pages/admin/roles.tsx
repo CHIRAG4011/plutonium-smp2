@@ -7,25 +7,34 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit2, Trash2, Check } from "lucide-react";
 
 const ALL_PERMISSIONS = [
-  { key: "view_dashboard",       label: "View Dashboard",        group: "Dashboard" },
-  { key: "view_tickets",         label: "View Tickets",           group: "Tickets" },
-  { key: "manage_tickets",       label: "Manage Tickets",         group: "Tickets" },
-  { key: "view_leaderboard",     label: "View Leaderboard",       group: "Leaderboard" },
-  { key: "manage_leaderboard",   label: "Manage Leaderboard",     group: "Leaderboard" },
-  { key: "view_purchases",       label: "View Purchases",         group: "Purchases" },
-  { key: "manage_purchases",     label: "Manage Purchases",       group: "Purchases" },
-  { key: "view_coupons",         label: "View Coupons",           group: "Coupons" },
-  { key: "manage_coupons",       label: "Manage Coupons",         group: "Coupons" },
-  { key: "view_announcements",   label: "View Announcements",     group: "Announcements" },
-  { key: "manage_announcements", label: "Manage Announcements",   group: "Announcements" },
-  { key: "view_store",           label: "View Store",             group: "Store" },
-  { key: "manage_store",         label: "Manage Store",           group: "Store" },
-  { key: "view_users",           label: "View Users",             group: "Users" },
-  { key: "manage_users",         label: "Manage Users",           group: "Users" },
-  { key: "view_settings",        label: "View Settings",          group: "Settings" },
-  { key: "manage_settings",      label: "Manage Settings",        group: "Settings" },
-  { key: "view_currency",        label: "View Currency",          group: "Currency" },
-  { key: "manage_currency",      label: "Manage Currency",        group: "Currency" },
+  { key: "view_dashboard",       label: "View Dashboard",         group: "Dashboard",     desc: "Access the admin dashboard and stats" },
+  { key: "view_tickets",         label: "View Tickets",            group: "Tickets",       desc: "See all support tickets" },
+  { key: "manage_tickets",       label: "Manage Tickets",          group: "Tickets",       desc: "Reply to and update tickets" },
+  { key: "close_tickets",        label: "Close Tickets",           group: "Tickets",       desc: "Close or reopen support tickets" },
+  { key: "view_purchases",       label: "View Purchases",          group: "Purchases",     desc: "See all purchase orders" },
+  { key: "manage_purchases",     label: "Manage Purchases",        group: "Purchases",     desc: "Update purchase status and notes" },
+  { key: "verify_payment",       label: "Verify Payment",          group: "Purchases",     desc: "Approve pending payments and mark orders complete" },
+  { key: "refund_purchases",     label: "Refund Purchases",        group: "Purchases",     desc: "Issue refunds on completed orders" },
+  { key: "view_users",           label: "View Users",              group: "Users",         desc: "Browse and search the user list" },
+  { key: "manage_users",         label: "Manage Users",            group: "Users",         desc: "Edit user profiles and custom roles" },
+  { key: "ban_users",            label: "Ban / Unban Users",       group: "Users",         desc: "Restrict or restore user accounts" },
+  { key: "change_user_role",     label: "Change User Role",        group: "Users",         desc: "Promote or demote user system roles" },
+  { key: "view_store",           label: "View Store Items",        group: "Store",         desc: "See all store products" },
+  { key: "manage_store",         label: "Manage Store",            group: "Store",         desc: "Create, edit, and delete store items" },
+  { key: "view_coupons",         label: "View Coupons",            group: "Coupons",       desc: "See all discount codes" },
+  { key: "manage_coupons",       label: "Manage Coupons",          group: "Coupons",       desc: "Create, edit, and delete coupons" },
+  { key: "view_announcements",   label: "View Announcements",      group: "Announcements", desc: "See all announcements" },
+  { key: "manage_announcements", label: "Manage Announcements",    group: "Announcements", desc: "Post, edit, and pin announcements" },
+  { key: "view_leaderboard",     label: "View Leaderboard",        group: "Leaderboard",   desc: "See player leaderboard" },
+  { key: "manage_leaderboard",   label: "Manage Leaderboard",      group: "Leaderboard",   desc: "Edit player stats and tiers" },
+  { key: "view_ranks",           label: "View Ranks",              group: "Ranks",         desc: "See cosmetic rank definitions" },
+  { key: "manage_ranks",         label: "Manage Ranks",            group: "Ranks",         desc: "Create and edit cosmetic ranks" },
+  { key: "view_roles",           label: "View Custom Roles",       group: "Roles",         desc: "See staff role definitions" },
+  { key: "manage_roles",         label: "Manage Custom Roles",     group: "Roles",         desc: "Create and edit custom roles" },
+  { key: "view_currency",        label: "View Currency",           group: "Currency",      desc: "See OWO coin balances" },
+  { key: "manage_currency",      label: "Manage Currency",         group: "Currency",      desc: "Adjust player OWO coin balances" },
+  { key: "view_settings",        label: "View Settings",           group: "Settings",      desc: "See server configuration" },
+  { key: "manage_settings",      label: "Manage Settings",         group: "Settings",      desc: "Edit server-wide configuration" },
 ];
 
 const GROUPS = Array.from(new Set(ALL_PERMISSIONS.map(p => p.group)));
@@ -86,6 +95,7 @@ function PermissionGrid({
                 <button
                   key={p.key}
                   type="button"
+                  title={(p as any).desc || p.label}
                   onClick={() => toggle(p.key)}
                   className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors ${
                     selected.includes(p.key)
