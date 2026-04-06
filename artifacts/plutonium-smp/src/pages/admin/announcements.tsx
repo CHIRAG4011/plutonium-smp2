@@ -11,7 +11,10 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
-import { Plus, Edit2, Trash2, Pin, PinOff, Eye, EyeOff, ExternalLink, Calendar, Palette } from "lucide-react";
+import {
+  Plus, Edit2, Trash2, Pin, PinOff, Eye, EyeOff, ExternalLink,
+  Calendar, Palette, Tag, Users, Zap,
+} from "lucide-react";
 import { format } from "date-fns";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -26,6 +29,12 @@ const TYPE_EMOJI: Record<string, string> = {
   info: "ℹ️", warning: "⚠️", update: "🔔", event: "🎉", maintenance: "🔧",
 };
 
+const PRIORITY_STYLES: Record<string, string> = {
+  normal: "",
+  high: "text-orange-400 border-orange-400/30 bg-orange-400/10",
+  urgent: "text-red-400 border-red-400/30 bg-red-400/10",
+};
+
 const PRESET_COLORS = [
   { label: "Green (Default)", value: "#22c55e" },
   { label: "Blue", value: "#3b82f6" },
@@ -33,13 +42,33 @@ const PRESET_COLORS = [
   { label: "Orange", value: "#f97316" },
   { label: "Red", value: "#ef4444" },
   { label: "Yellow", value: "#eab308" },
+  { label: "Cyan", value: "#06b6d4" },
+  { label: "Pink", value: "#ec4899" },
+];
+
+const AUDIENCE_OPTIONS = [
+  { value: "all", label: "Everyone" },
+  { value: "members", label: "Registered Members" },
+  { value: "vip", label: "VIP & Above" },
+  { value: "mvp", label: "MVP & Above" },
+  { value: "legend", label: "Legend Only" },
 ];
 
 const EMPTY_FORM = {
-  title: "", content: "", type: "info",
-  imageUrl: "", bannerColor: "", pinned: false,
-  callToActionUrl: "", callToActionText: "",
-  expiresAt: "", scheduledAt: "",
+  title: "",
+  content: "",
+  type: "info",
+  priority: "normal",
+  audience: "all",
+  imageUrl: "",
+  bannerColor: "",
+  pinned: false,
+  isActive: true,
+  callToActionUrl: "",
+  callToActionText: "",
+  expiresAt: "",
+  scheduledAt: "",
+  tags: "",
 };
 
 function getApiBase() {
@@ -101,15 +130,41 @@ function AnnouncementForm({
         </div>
 
         <div className="space-y-1.5">
+          <Label className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> Priority</Label>
+          <Select value={f.priority} onValueChange={v => set("priority", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="normal">Normal</SelectItem>
+              <SelectItem value="high">🔶 High</SelectItem>
+              <SelectItem value="urgent">🔴 Urgent</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Audience</Label>
+          <Select value={f.audience} onValueChange={v => set("audience", v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {AUDIENCE_OPTIONS.map(a => (
+                <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
           <Label className="flex items-center gap-1.5"><Palette className="w-3.5 h-3.5" /> Banner Color</Label>
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap items-center">
             {PRESET_COLORS.map(c => (
               <button
                 key={c.value}
                 type="button"
                 title={c.label}
                 onClick={() => set("bannerColor", f.bannerColor === c.value ? "" : c.value)}
-                className="w-6 h-6 rounded-full border-2 transition-all"
+                className="w-5 h-5 rounded-full border-2 transition-all flex-shrink-0"
                 style={{
                   backgroundColor: c.value,
                   borderColor: f.bannerColor === c.value ? "white" : "transparent",
@@ -122,11 +177,27 @@ function AnnouncementForm({
               type="color"
               value={f.bannerColor || "#22c55e"}
               onChange={e => set("bannerColor", e.target.value)}
-              className="w-8 h-6 p-0 border rounded cursor-pointer"
+              className="w-7 h-5 p-0 border rounded cursor-pointer"
               title="Custom color"
             />
           </div>
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> Tags <span className="text-xs text-muted-foreground font-normal">(comma-separated)</span></Label>
+        <Input
+          placeholder="e.g. update, pvp, season-3"
+          value={f.tags}
+          onChange={e => set("tags", e.target.value)}
+        />
+        {f.tags && (
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {f.tags.split(",").map(t => t.trim()).filter(Boolean).map(t => (
+              <span key={t} className="px-2 py-0.5 rounded-full bg-border text-xs font-medium">#{t}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="space-y-1.5">
@@ -171,9 +242,17 @@ function AnnouncementForm({
         </div>
       </div>
 
-      <div className="flex items-center gap-3 pt-1">
-        <Switch id="pinned-sw" checked={f.pinned} onCheckedChange={v => set("pinned", v)} />
-        <label htmlFor="pinned-sw" className="text-sm cursor-pointer select-none">Pin this announcement to the top</label>
+      <div className="flex flex-col gap-3 pt-1">
+        <div className="flex items-center gap-3">
+          <Switch id="pinned-sw" checked={f.pinned} onCheckedChange={v => set("pinned", v)} />
+          <label htmlFor="pinned-sw" className="text-sm cursor-pointer select-none">Pin to the top</label>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch id="active-sw" checked={f.isActive} onCheckedChange={v => set("isActive", v)} />
+          <label htmlFor="active-sw" className="text-sm cursor-pointer select-none">
+            Publish immediately <span className="text-xs text-muted-foreground">(uncheck to save as draft)</span>
+          </label>
+        </div>
       </div>
 
       <Button type="submit" className="w-full" disabled={submitting}>
@@ -211,6 +290,7 @@ export default function AdminAnnouncements() {
         callToActionText: form.callToActionText || undefined,
         expiresAt: form.expiresAt || undefined,
         scheduledAt: form.scheduledAt || undefined,
+        tags: form.tags ? form.tags.split(",").map(t => t.trim()).filter(Boolean) : undefined,
       } as any,
     }, {
       onSuccess: () => {
@@ -237,6 +317,7 @@ export default function AdminAnnouncements() {
           callToActionText: editForm.callToActionText || null,
           expiresAt: editForm.expiresAt || null,
           scheduledAt: editForm.scheduledAt || null,
+          tags: editForm.tags ? editForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
         }),
       });
       if (!r.ok) throw new Error((await r.json()).error);
@@ -294,13 +375,17 @@ export default function AdminAnnouncements() {
       title: a.title,
       content: a.content,
       type: a.type,
+      priority: (a as any).priority || "normal",
+      audience: (a as any).audience || "all",
       imageUrl: a.imageUrl || "",
       bannerColor: a.bannerColor || "",
       pinned: a.pinned,
+      isActive: a.isActive,
       callToActionUrl: a.callToActionUrl || "",
       callToActionText: a.callToActionText || "",
       expiresAt: a.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : "",
       scheduledAt: a.scheduledAt ? new Date(a.scheduledAt).toISOString().slice(0, 16) : "",
+      tags: Array.isArray((a as any).tags) ? (a as any).tags.join(", ") : ((a as any).tags || ""),
     });
     setEditOpen(true);
   }
@@ -311,7 +396,7 @@ export default function AdminAnnouncements() {
         <div>
           <h1 className="text-3xl font-display font-bold">Announcements</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {data?.length ?? 0} total · {data?.filter(a => a.pinned).length ?? 0} pinned
+            {data?.length ?? 0} total · {data?.filter(a => a.pinned).length ?? 0} pinned · {data?.filter(a => a.isActive).length ?? 0} visible
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -333,10 +418,21 @@ export default function AdminAnnouncements() {
                   <Badge variant="outline" className={`${TYPE_COLORS[a.type] ?? ""} text-xs`}>
                     {TYPE_EMOJI[a.type]} {a.type}
                   </Badge>
-                  {!a.isActive && <Badge variant="outline" className="text-xs">Hidden</Badge>}
+                  {(a as any).priority && (a as any).priority !== "normal" && (
+                    <Badge variant="outline" className={`text-xs ${PRIORITY_STYLES[(a as any).priority] || ""}`}>
+                      {(a as any).priority === "urgent" ? "🔴" : "🔶"} {(a as any).priority}
+                    </Badge>
+                  )}
+                  {!a.isActive && <Badge variant="outline" className="text-xs">Draft</Badge>}
                   {(a as any).expiresAt && (
                     <Badge variant="outline" className="text-xs text-orange-400 border-orange-400/30">
                       Expires {format(new Date((a as any).expiresAt), "MMM d")}
+                    </Badge>
+                  )}
+                  {(a as any).audience && (a as any).audience !== "all" && (
+                    <Badge variant="outline" className="text-xs text-blue-400 border-blue-400/30">
+                      <Users className="w-2.5 h-2.5 mr-1" />
+                      {AUDIENCE_OPTIONS.find(o => o.value === (a as any).audience)?.label || (a as any).audience}
                     </Badge>
                   )}
                   <span className="text-xs text-muted-foreground">{format(new Date(a.createdAt), "MMM d, yyyy")}</span>
@@ -365,6 +461,14 @@ export default function AdminAnnouncements() {
 
               {a.imageUrl && (
                 <img src={a.imageUrl} alt="" className="rounded-lg max-h-48 object-cover w-full border border-border" />
+              )}
+
+              {Array.isArray((a as any).tags) && (a as any).tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {(a as any).tags.map((t: string) => (
+                    <span key={t} className="px-2 py-0.5 rounded-full bg-border/60 text-xs text-muted-foreground">#{t}</span>
+                  ))}
+                </div>
               )}
 
               {((a as any).callToActionUrl) && (

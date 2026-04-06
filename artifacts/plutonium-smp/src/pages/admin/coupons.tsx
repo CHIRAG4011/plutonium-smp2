@@ -95,9 +95,12 @@ export default function AdminCoupons() {
       discountPercent: form.discountType === "percent" ? Number(form.discountPercent) : 0,
       discountFixed: form.discountType === "fixed" ? Number(form.discountFixed) : undefined,
       usageLimit: form.usageLimit ? Number(form.usageLimit) : undefined,
+      maxUsesPerUser: form.maxUsesPerUser ? Number(form.maxUsesPerUser) : undefined,
       expiresAt: form.expiresAt || undefined,
       minCartValue: form.minCartValue ? Number(form.minCartValue) * 100 : undefined,
       description: form.description || undefined,
+      firstTimeOnly: form.firstTimeOnly || undefined,
+      applicableCategories: form.applicableCategories.length > 0 ? form.applicableCategories : undefined,
     };
     createCoupon({ data: payload }, {
       onSuccess: () => {
@@ -336,6 +339,16 @@ export default function AdminCoupons() {
                     onChange={e => setForm({ ...form, usageLimit: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="mt-3 space-y-1.5">
+                <Label>Max Uses Per User</Label>
+                <Input
+                  type="number" min={1}
+                  placeholder="Unlimited per user"
+                  value={form.maxUsesPerUser}
+                  onChange={e => setForm({ ...form, maxUsesPerUser: e.target.value })}
+                />
               </div>
 
               <div className="mt-3 space-y-1.5">

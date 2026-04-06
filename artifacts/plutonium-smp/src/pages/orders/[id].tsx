@@ -3,13 +3,12 @@ import { useRoute, useLocation, Link, Redirect } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, CheckCircle, Clock, XCircle, RotateCcw, ShoppingBag,
-  Tag, Calendar, CreditCard, Upload, ImageIcon, AlertCircle, Info,
+  Tag, Calendar, CreditCard, Upload, ImageIcon, AlertCircle, Package,
 } from "lucide-react";
 
 function authFetch(path: string, opts: RequestInit = {}) {
@@ -20,12 +19,19 @@ function authFetch(path: string, opts: RequestInit = {}) {
   });
 }
 
+const STATUS_CONFIG: Record<string, { label: string; cls: string; bgCls: string; borderCls: string }> = {
+  completed: { label: "Completed",  cls: "text-primary",      bgCls: "bg-primary/10",      borderCls: "border-primary/30" },
+  pending:   { label: "Pending",    cls: "text-yellow-500",   bgCls: "bg-yellow-500/10",   borderCls: "border-yellow-500/30" },
+  failed:    { label: "Failed",     cls: "text-destructive",  bgCls: "bg-destructive/10",  borderCls: "border-destructive/30" },
+  refunded:  { label: "Refunded",   cls: "text-blue-400",     bgCls: "bg-blue-400/10",     borderCls: "border-blue-400/30" },
+};
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { icon: React.ReactNode; label: string; className: string }> = {
-    completed: { icon: <CheckCircle className="w-4 h-4" />, label: "Completed",  className: "text-primary border-primary bg-primary/10" },
-    pending:   { icon: <Clock className="w-4 h-4" />,       label: "Pending",    className: "text-yellow-500 border-yellow-500 bg-yellow-500/10" },
-    failed:    { icon: <XCircle className="w-4 h-4" />,     label: "Failed",     className: "text-destructive border-destructive bg-destructive/10" },
-    refunded:  { icon: <RotateCcw className="w-4 h-4" />,   label: "Refunded",   className: "text-blue-400 border-blue-400 bg-blue-400/10" },
+    completed: { icon: <CheckCircle className="w-4 h-4" />, label: "Completed", className: "text-primary border-primary bg-primary/10" },
+    pending:   { icon: <Clock className="w-4 h-4" />,       label: "Pending",   className: "text-yellow-500 border-yellow-500 bg-yellow-500/10" },
+    failed:    { icon: <XCircle className="w-4 h-4" />,     label: "Failed",    className: "text-destructive border-destructive bg-destructive/10" },
+    refunded:  { icon: <RotateCcw className="w-4 h-4" />,   label: "Refunded",  className: "text-blue-400 border-blue-400 bg-blue-400/10" },
   };
   const s = map[status] || { icon: <Clock className="w-4 h-4" />, label: status, className: "" };
   return (
@@ -33,6 +39,19 @@ function StatusBadge({ status }: { status: string }) {
       {s.icon} {s.label}
     </Badge>
   );
+}
+
+const PROGRESS_STEPS = [
+  { key: "placed",    label: "Order Placed",     icon: Package    },
+  { key: "proof",     label: "Proof Submitted",  icon: ImageIcon  },
+  { key: "review",    label: "Under Review",     icon: Clock      },
+  { key: "completed", label: "Confirmed",        icon: CheckCircle },
+];
+
+function getProgressStep(p: any): number {
+  if (p.status === "completed") return 3;
+  if (p.paymentProofUrl) return 2;
+  return 0;
 }
 
 export default function OrderDetail() {
@@ -119,59 +138,69 @@ export default function OrderDetail() {
   const p = purchase;
   const hasProof = !!p?.paymentProofUrl;
   const isPending = p?.status === "pending";
+  const progressStep = p ? getProgressStep(p) : 0;
+  const statusCfg = STATUS_CONFIG[p?.status] || STATUS_CONFIG.pending;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12">
-      <div className="flex items-center gap-3 mb-8">
+    <div className="max-w-3xl mx-auto px-4 py-12 space-y-6">
+      <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => setLocation("/dashboard")} className="gap-2 text-muted-foreground">
           <ArrowLeft className="w-4 h-4" /> Dashboard
         </Button>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-display font-bold">Order Details</h1>
-          <p className="text-muted-foreground text-xs font-mono mt-0.5">{p?.id}</p>
+          <p className="text-muted-foreground text-xs font-mono mt-0.5 truncate">{p?.id}</p>
         </div>
         {p && <StatusBadge status={p.status} />}
       </div>
 
       {p && (
-        <div className="space-y-6">
-          <Card className="bg-card border-border shadow-md">
-            <CardHeader className="border-b border-border pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShoppingBag className="w-4 h-4 text-primary" />
-                Order Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-0 divide-y divide-border">
-              {[
-                { icon: <Tag className="w-4 h-4 text-muted-foreground" />, label: "Item", value: <span className="font-bold">{p.itemName}</span> },
-                { icon: <ShoppingBag className="w-4 h-4 text-muted-foreground" />, label: "Category", value: <span className="capitalize">{p.itemCategory?.replace("_", " ")}</span> },
-                { icon: <CreditCard className="w-4 h-4 text-muted-foreground" />, label: "Total", value: <span className="font-bold text-primary text-lg">${(p.pricePaid / 100).toFixed(2)}</span> },
-                ...(p.couponUsed ? [{ icon: <Tag className="w-4 h-4 text-muted-foreground" />, label: "Coupon Used", value: <span className="font-mono text-primary">{p.couponUsed}</span> }] : []),
-                { icon: <Calendar className="w-4 h-4 text-muted-foreground" />, label: "Placed", value: format(new Date(p.createdAt), "MMM d, yyyy 'at' h:mm a") },
-              ].map((row, i) => (
-                <div key={i} className="flex items-center justify-between py-3">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">{row.icon} {row.label}</div>
-                  <div className="text-sm">{row.value}</div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {p.status === "completed" && (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 flex items-start gap-4">
-              <CheckCircle className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-primary">Order Confirmed!</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Your payment has been verified and your item has been delivered. Enjoy your purchase!
-                </p>
+        <>
+          {/* Progress Steps */}
+          {(p.status === "pending" || p.status === "completed") && (
+            <div className="bg-card border border-border rounded-2xl p-6">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-5">Order Progress</p>
+              <div className="flex items-center gap-0">
+                {PROGRESS_STEPS.map((step, i) => {
+                  const isCompleted = i <= progressStep;
+                  const isCurrent = i === progressStep && p.status !== "completed";
+                  const Icon = step.icon;
+                  return (
+                    <div key={step.key} className="flex items-center flex-1">
+                      <div className="flex flex-col items-center gap-1.5 flex-1">
+                        <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all ${
+                          isCompleted
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "border-border text-muted-foreground bg-card"
+                        } ${isCurrent ? "ring-2 ring-primary/30 ring-offset-1 ring-offset-card" : ""}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className={`text-xs font-medium text-center leading-tight max-w-[70px] ${isCompleted ? "text-foreground" : "text-muted-foreground"}`}>
+                          {step.label}
+                        </span>
+                      </div>
+                      {i < PROGRESS_STEPS.length - 1 && (
+                        <div className={`h-0.5 flex-1 mx-1 rounded-full -mt-4 ${i < progressStep ? "bg-primary" : "bg-border"}`} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
+          {/* Status alerts */}
+          {p.status === "completed" && (
+            <div className={`rounded-2xl border ${statusCfg.borderCls} ${statusCfg.bgCls} p-5 flex items-start gap-4`}>
+              <CheckCircle className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-primary">Payment Verified — Order Confirmed!</p>
+                <p className="text-sm text-muted-foreground mt-1">Your payment has been verified and your item has been delivered. Enjoy your purchase!</p>
+              </div>
+            </div>
+          )}
           {p.status === "refunded" && (
-            <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-5 flex items-start gap-4">
+            <div className="rounded-2xl border border-blue-500/30 bg-blue-500/5 p-5 flex items-start gap-4">
               <RotateCcw className="w-6 h-6 text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-blue-400">Order Refunded</p>
@@ -179,28 +208,59 @@ export default function OrderDetail() {
               </div>
             </div>
           )}
+          {p.status === "failed" && (
+            <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 flex items-start gap-4">
+              <XCircle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-destructive">Order Failed</p>
+                <p className="text-sm text-muted-foreground mt-1">This order could not be completed. Please contact support on our Discord server for assistance.</p>
+                {p.notes && <p className="text-sm text-muted-foreground mt-2 italic">Note: {p.notes}</p>}
+              </div>
+            </div>
+          )}
 
+          {/* Order summary card */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Order Summary</span>
+            </div>
+            <div className="divide-y divide-border">
+              {[
+                { icon: <Tag className="w-4 h-4 text-muted-foreground" />, label: "Item", value: <span className="font-bold">{p.itemName}</span> },
+                { icon: <ShoppingBag className="w-4 h-4 text-muted-foreground" />, label: "Category", value: <span className="capitalize">{p.itemCategory?.replace("_", " ")}</span> },
+                { icon: <CreditCard className="w-4 h-4 text-muted-foreground" />, label: "Total", value: <span className="font-bold text-primary text-lg">${(p.pricePaid / 100).toFixed(2)}</span> },
+                ...(p.couponUsed ? [{ icon: <Tag className="w-4 h-4 text-muted-foreground" />, label: "Coupon Used", value: <span className="font-mono text-primary bg-primary/10 px-2 py-0.5 rounded text-xs">{p.couponUsed}</span> }] : []),
+                { icon: <Calendar className="w-4 h-4 text-muted-foreground" />, label: "Placed", value: <span className="text-sm">{format(new Date(p.createdAt), "MMM d, yyyy 'at' h:mm a")}</span> },
+              ].map((row, i) => (
+                <div key={i} className="flex items-center justify-between px-5 py-3.5">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">{row.icon} {row.label}</div>
+                  <div className="text-sm">{row.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Payment proof section — only show when pending */}
           {isPending && (
-            <Card className="bg-card border-border shadow-md">
-              <CardHeader className="border-b border-border pb-4">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Upload className="w-4 h-4 text-primary" />
-                  Submit Payment Proof
-                  {hasProof && <Badge variant="outline" className="text-green-500 border-green-500 ml-auto">Submitted</Badge>}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-5 space-y-5">
-                <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-4 flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5 shrink-0" />
-                  <div className="text-sm text-muted-foreground">
-                    <p className="font-medium text-foreground mb-1">How to complete your order:</p>
-                    <ol className="list-decimal list-inside space-y-1">
-                      <li>Complete the payment using the server's accepted payment method</li>
-                      <li>Take a screenshot of your payment confirmation</li>
-                      <li>Upload the screenshot below</li>
-                      <li>An admin will verify and activate your purchase</li>
-                    </ol>
-                  </div>
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+                <Upload className="w-4 h-4 text-primary" />
+                <span className="font-semibold text-sm">Submit Payment Proof</span>
+                {(hasProof || proofSubmitted) && (
+                  <Badge variant="outline" className="text-green-500 border-green-500 bg-green-500/10 ml-auto text-xs">
+                    <CheckCircle className="w-3 h-3 mr-1" /> Submitted
+                  </Badge>
+                )}
+              </div>
+              <div className="p-5 space-y-5">
+                <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 text-sm">
+                  <p className="font-medium text-foreground mb-2">How to complete your order:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Complete the payment using the server's accepted method</li>
+                    <li>Take a screenshot of your payment confirmation</li>
+                    <li>Upload it below — an admin will verify within 24 hours</li>
+                  </ol>
                 </div>
 
                 {hasProof && !proofSubmitted ? (
@@ -210,14 +270,17 @@ export default function OrderDetail() {
                       <img src={p.paymentProofUrl} alt="Your payment proof" className="w-full max-h-64 object-contain" />
                     </div>
                     {p.paymentProofSubmittedAt && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Clock className="w-3 h-3" />
                         Submitted {format(new Date(p.paymentProofSubmittedAt), "MMM d, yyyy 'at' h:mm a")}
                       </p>
                     )}
                   </div>
                 ) : proofSubmitted ? (
-                  <div className="text-center py-6">
-                    <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-3" />
+                  <div className="text-center py-8">
+                    <div className="w-14 h-14 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle className="w-7 h-7 text-primary" />
+                    </div>
                     <p className="font-semibold">Payment proof submitted!</p>
                     <p className="text-sm text-muted-foreground mt-1">An admin will review and confirm your order shortly.</p>
                   </div>
@@ -267,23 +330,10 @@ export default function OrderDetail() {
                     )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
-
-          {p.status === "failed" && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 flex items-start gap-4">
-              <XCircle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-destructive">Order Failed</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  This order could not be completed. Please contact support on our Discord server for assistance.
-                </p>
-                {p.notes && <p className="text-sm text-muted-foreground mt-2 italic">Note: {p.notes}</p>}
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

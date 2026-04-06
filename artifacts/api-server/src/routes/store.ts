@@ -223,6 +223,7 @@ router.post("/checkout", requireAuth, async (req: AuthRequest, res) => {
 
     let totalUsd = 0;
     const orderItems: { name: string; price: number; quantity: number }[] = [];
+    const purchaseIds: string[] = [];
 
     for (const cartItem of items as { itemId: string; quantity: number }[]) {
       const storeItem = storeItems.find((i) => i.id === cartItem.itemId);
@@ -235,6 +236,7 @@ router.post("/checkout", requireAuth, async (req: AuthRequest, res) => {
 
       for (let q = 0; q < qty; q++) {
         const purchaseId = generateId();
+        purchaseIds.push(purchaseId);
         await Purchase.create({
           _id: purchaseId,
           userId: user.id,
@@ -258,7 +260,7 @@ router.post("/checkout", requireAuth, async (req: AuthRequest, res) => {
       couponCode ? discountPercent : 0
     ).catch(() => {});
 
-    res.json({ message: "Order placed successfully! Check your email for confirmation. Your order is pending review." });
+    res.json({ message: "Order placed successfully! Check your email for confirmation. Your order is pending review.", purchaseIds });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

@@ -3,7 +3,6 @@ import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -13,7 +12,8 @@ import { format } from "date-fns";
 import {
   ArrowLeft, CheckCircle, Clock, XCircle, RotateCcw,
   User, ShoppingBag, Tag, Calendar, CreditCard,
-  MessageSquare, ImageIcon, ExternalLink, AlertCircle,
+  ImageIcon, ExternalLink, AlertCircle, Package,
+  FileCheck, Zap,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -25,19 +25,34 @@ function authFetch(path: string, opts: RequestInit = {}) {
   });
 }
 
+const STATUS_MAP = {
+  completed: { icon: CheckCircle, label: "Completed", cls: "text-primary",     bg: "bg-primary/10",     border: "border-primary/30",     dot: "bg-primary" },
+  pending:   { icon: Clock,       label: "Pending",   cls: "text-yellow-500",  bg: "bg-yellow-500/10",  border: "border-yellow-500/30",  dot: "bg-yellow-500" },
+  failed:    { icon: XCircle,     label: "Failed",    cls: "text-destructive", bg: "bg-destructive/10", border: "border-destructive/30", dot: "bg-destructive" },
+  refunded:  { icon: RotateCcw,   label: "Refunded",  cls: "text-blue-400",    bg: "bg-blue-400/10",    border: "border-blue-400/30",    dot: "bg-blue-400" },
+};
+
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { icon: React.ReactNode; label: string; className: string }> = {
-    completed: { icon: <CheckCircle className="w-4 h-4" />, label: "Completed", className: "text-primary border-primary bg-primary/10" },
-    pending:   { icon: <Clock className="w-4 h-4" />,       label: "Pending",   className: "text-yellow-500 border-yellow-500 bg-yellow-500/10" },
-    failed:    { icon: <XCircle className="w-4 h-4" />,     label: "Failed",    className: "text-destructive border-destructive bg-destructive/10" },
-    refunded:  { icon: <RotateCcw className="w-4 h-4" />,   label: "Refunded",  className: "text-blue-400 border-blue-400 bg-blue-400/10" },
-  };
-  const s = map[status] || { icon: <Clock className="w-4 h-4" />, label: status, className: "" };
+  const s = STATUS_MAP[status as keyof typeof STATUS_MAP] || STATUS_MAP.pending;
+  const Icon = s.icon;
   return (
-    <Badge variant="outline" className={`flex items-center gap-1.5 px-3 py-1 text-sm font-semibold ${s.className}`}>
-      {s.icon} {s.label}
+    <Badge variant="outline" className={`flex items-center gap-1.5 px-3 py-1 text-sm font-semibold ${s.cls} ${s.bg} ${s.border}`}>
+      <Icon className="w-4 h-4" /> {s.label}
     </Badge>
   );
+}
+
+const ORDER_STAGES = [
+  { key: "placed",    label: "Placed",   Icon: Package   },
+  { key: "proof",     label: "Proof",    Icon: FileCheck },
+  { key: "review",    label: "Review",   Icon: Clock     },
+  { key: "completed", label: "Done",     Icon: Zap       },
+];
+
+function getStageIndex(p: any): number {
+  if (p.status === "completed") return 3;
+  if (p.paymentProofUrl) return 2;
+  return 0;
 }
 
 export default function AdminPurchaseDetail() {
@@ -107,84 +122,140 @@ export default function AdminPurchaseDetail() {
   }
 
   const p = purchase;
+  const currentStage = getStageIndex(p);
+  const statusCfg = STATUS_MAP[p.status as keyof typeof STATUS_MAP] || STATUS_MAP.pending;
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => setLocation("/admin/purchases")} className="gap-2 text-muted-foreground">
+      {/* Header */}
+      <div className="flex items-start gap-4">
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/admin/purchases")} className="gap-2 text-muted-foreground mt-1">
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-display font-bold">Order Details</h1>
-          <p className="text-muted-foreground text-sm font-mono">{p.id}</p>
+          <p className="text-muted-foreground text-xs font-mono mt-0.5 flex items-center gap-2">
+            <span>{p.id}</span>
+          </p>
         </div>
         <StatusBadge status={p.status} />
       </div>
 
+      {/* Stage progress bar */}
+      {(p.status === "pending" || p.status === "completed") && (
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-5">Order Progress</p>
+          <div className="flex items-center">
+            {ORDER_STAGES.map((stage, i) => {
+              const done = i <= currentStage;
+              const active = i === currentStage && p.status !== "completed";
+              const { Icon } = stage;
+              return (
+                <div key={stage.key} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center gap-1.5 w-full">
+                    <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all ${
+                      done ? "bg-primary border-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"
+                    } ${active ? "ring-2 ring-primary/40 ring-offset-2 ring-offset-card" : ""}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className={`text-xs font-medium text-center ${done ? "text-foreground" : "text-muted-foreground"}`}>
+                      {stage.label}
+                    </span>
+                  </div>
+                  {i < ORDER_STAGES.length - 1 && (
+                    <div className={`h-0.5 flex-1 mx-1 rounded-full -mt-4 ${i < currentStage ? "bg-primary" : "bg-border"}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="bg-card border-border shadow-md">
-            <CardHeader className="border-b border-border pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShoppingBag className="w-4 h-4 text-primary" />
-                Order Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-0 divide-y divide-border">
+        <div className="lg:col-span-2 space-y-5">
+          {/* Item summary */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2 bg-background/30">
+              <ShoppingBag className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Order Summary</span>
+            </div>
+            <div className="divide-y divide-border">
               {[
                 { icon: <Tag className="w-4 h-4 text-muted-foreground" />, label: "Item", value: <span className="font-bold">{p.itemName}</span> },
-                { icon: <ShoppingBag className="w-4 h-4 text-muted-foreground" />, label: "Category", value: <span className="capitalize">{p.itemCategory?.replace("_", " ")}</span> },
-                { icon: <CreditCard className="w-4 h-4 text-muted-foreground" />, label: "Amount Paid", value: <span className="font-bold text-primary text-lg">${(p.pricePaid / 100).toFixed(2)}</span> },
-                ...(p.couponUsed ? [{ icon: <Tag className="w-4 h-4 text-muted-foreground" />, label: "Coupon", value: <span className="font-mono text-primary">{p.couponUsed}</span> }] : []),
-                { icon: <Calendar className="w-4 h-4 text-muted-foreground" />, label: "Placed", value: format(new Date(p.createdAt), "MMM d, yyyy 'at' h:mm a") },
+                {
+                  icon: <ShoppingBag className="w-4 h-4 text-muted-foreground" />,
+                  label: "Category",
+                  value: <span className="capitalize px-2 py-0.5 bg-border/50 rounded text-xs">{p.itemCategory?.replace("_", " ")}</span>,
+                },
+                {
+                  icon: <CreditCard className="w-4 h-4 text-muted-foreground" />,
+                  label: "Amount Paid",
+                  value: <span className="font-bold text-primary text-lg">${(p.pricePaid / 100).toFixed(2)}</span>,
+                },
+                ...(p.couponUsed ? [{
+                  icon: <Tag className="w-4 h-4 text-muted-foreground" />,
+                  label: "Coupon",
+                  value: <span className="font-mono text-primary bg-primary/10 px-2 py-0.5 rounded text-xs">{p.couponUsed}</span>,
+                }] : []),
+                {
+                  icon: <Calendar className="w-4 h-4 text-muted-foreground" />,
+                  label: "Placed",
+                  value: <span className="text-sm">{format(new Date(p.createdAt), "MMM d, yyyy 'at' h:mm a")}</span>,
+                },
               ].map((row, i) => (
-                <div key={i} className="flex items-center justify-between py-3">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {row.icon} {row.label}
-                  </div>
+                <div key={i} className="flex items-center justify-between px-5 py-3.5">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">{row.icon} {row.label}</div>
                   <div className="text-sm text-right">{row.value}</div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="bg-card border-border shadow-md">
-            <CardHeader className="border-b border-border pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <User className="w-4 h-4 text-primary" />
-                Customer
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
+          {/* Customer card */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2 bg-background/30">
+              <User className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Customer</span>
+            </div>
+            <div className="p-5">
               <div className="flex items-center gap-4">
-                <Avatar className="w-12 h-12 border border-border">
+                <Avatar className="w-14 h-14 border-2 border-border">
                   <AvatarImage src={p.user?.discordAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.username}`} />
-                  <AvatarFallback>{(p.username || "?")[0]}</AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary font-bold">{(p.username || "?")[0].toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold">{p.username || "Unknown"}</p>
-                  {p.user?.email && <p className="text-sm text-muted-foreground">{p.user.email}</p>}
-                  <p className="text-xs text-muted-foreground font-mono mt-0.5">{p.userId}</p>
+                  <p className="font-bold text-base">{p.username || "Unknown"}</p>
+                  {p.user?.email && (
+                    <p className="text-sm text-muted-foreground mt-0.5">{p.user.email}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground font-mono mt-1 break-all">{p.userId}</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="bg-card border-border shadow-md">
-            <CardHeader className="border-b border-border pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ImageIcon className="w-4 h-4 text-primary" />
-                Payment Proof
-                {p.paymentProofUrl && (
-                  <Badge variant="outline" className="text-green-500 border-green-500 ml-auto">Submitted</Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
+          {/* Payment Proof */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex items-center gap-2 bg-background/30">
+              <ImageIcon className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Payment Proof</span>
+              {p.paymentProofUrl ? (
+                <Badge variant="outline" className="text-green-500 border-green-500 bg-green-500/10 ml-auto text-xs">
+                  <CheckCircle className="w-3 h-3 mr-1" /> Submitted
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-muted-foreground border-border ml-auto text-xs">
+                  Awaiting
+                </Badge>
+              )}
+            </div>
+            <div className="p-5">
               {p.paymentProofUrl ? (
                 <div className="space-y-3">
                   {p.paymentProofSubmittedAt && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Clock className="w-3 h-3" />
                       Submitted {format(new Date(p.paymentProofSubmittedAt), "MMM d, yyyy 'at' h:mm a")}
                     </p>
                   )}
@@ -198,37 +269,38 @@ export default function AdminPurchaseDetail() {
                       href={p.paymentProofUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                     >
-                      <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-white text-sm flex items-center gap-2">
+                      <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2.5 text-white text-sm flex items-center gap-2 font-medium">
                         <ExternalLink className="w-4 h-4" /> View Full Size
                       </div>
                     </a>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No payment proof submitted yet</p>
-                  <p className="text-xs mt-1">The customer will upload their payment screenshot from their order page.</p>
+                <div className="text-center py-10 text-muted-foreground">
+                  <div className="w-12 h-12 rounded-full bg-border/50 flex items-center justify-center mx-auto mb-3">
+                    <ImageIcon className="w-6 h-6 opacity-40" />
+                  </div>
+                  <p className="text-sm font-medium">No payment proof submitted yet</p>
+                  <p className="text-xs mt-1">The customer will upload their payment screenshot from the checkout flow.</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-6">
+        {/* Right sidebar */}
+        <div className="space-y-5">
           {isAdmin && (
-            <Card className="bg-card border-border shadow-md">
-              <CardHeader className="border-b border-border pb-4">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <MessageSquare className="w-4 h-4 text-primary" />
-                  Update Order
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4 space-y-4">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center gap-2 bg-background/30">
+                <Zap className="w-4 h-4 text-primary" />
+                <span className="font-semibold text-sm">Update Order</span>
+              </div>
+              <div className="p-5 space-y-4">
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Status</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</Label>
                   <Select value={statusUpdate || p.status} onValueChange={setStatusUpdate}>
                     <SelectTrigger>
                       <SelectValue />
@@ -251,9 +323,9 @@ export default function AdminPurchaseDetail() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Admin Notes</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Admin Notes</Label>
                   <Textarea
-                    placeholder="Internal notes about this order (not shown to customer)..."
+                    placeholder="Internal notes (not shown to customer)..."
                     value={notes || p.notes || ""}
                     onChange={e => setNotes(e.target.value)}
                     rows={4}
@@ -268,29 +340,43 @@ export default function AdminPurchaseDetail() {
                 >
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
-          {p.notes && (
-            <Card className="bg-card border-border shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Admin Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-relaxed">{p.notes}</p>
-              </CardContent>
-            </Card>
-          )}
+          {/* Quick info */}
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Order Info</p>
 
-          <Card className="bg-card border-border shadow-md">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Order ID</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-mono text-xs break-all text-muted-foreground">{p.id}</p>
-            </CardContent>
-          </Card>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Order ID</p>
+                <p className="font-mono text-xs break-all text-muted-foreground bg-background/50 border border-border rounded-lg p-2">{p.id}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Current Status</p>
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${statusCfg.border} ${statusCfg.bg}`}>
+                  <div className={`w-2 h-2 rounded-full ${statusCfg.dot}`} />
+                  <span className={`text-sm font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Date Placed</p>
+                <p className="text-sm">{format(new Date(p.createdAt), "MMM d, yyyy")}</p>
+                <p className="text-xs text-muted-foreground">{format(new Date(p.createdAt), "h:mm a")}</p>
+              </div>
+
+              {p.paymentProofSubmittedAt && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Proof Submitted</p>
+                  <p className="text-sm">{format(new Date(p.paymentProofSubmittedAt), "MMM d, yyyy")}</p>
+                  <p className="text-xs text-muted-foreground">{format(new Date(p.paymentProofSubmittedAt), "h:mm a")}</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

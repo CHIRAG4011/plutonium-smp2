@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
@@ -8,8 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingCart, Trash2, Plus, Minus, Tag, Mail, ArrowRight, Package } from "lucide-react";
+import {
+  ShoppingCart, Trash2, Plus, Minus, Tag, Mail, ArrowRight,
+  Package, Upload, ImageIcon, CheckCircle, Info,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+function authFetch(path: string, opts: RequestInit = {}) {
+  const token = localStorage.getItem("plutonium_token") || "";
+  return fetch(`${window.location.origin}/api${path}`, {
+    ...opts,
+    headers: { Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
+  });
+}
 
 export default function Cart() {
   const { items, removeItem, updateQuantity, clearCart, total, count } = useCart();
@@ -19,8 +30,11 @@ export default function Cart() {
 
   const [couponCode, setCouponCode] = useState("");
   const [otpCode, setOtpCode] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [step, setStep] = useState<"cart" | "otp" | "done">("cart");
+  const [step, setStep] = useState<"cart" | "otp" | "proof" | "done">("cart");
+  const [purchaseIds, setPurchaseIds] = useState<string[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { mutate: sendOtp, isPending: sendingOtp } = useSendCheckoutOtp();
   const { mutate: checkout, isPending: checkingOut } = useCartCheckout();
@@ -33,7 +47,6 @@ export default function Cart() {
     }
     sendOtp(undefined, {
       onSuccess: () => {
-        setOtpSent(true);
         setStep("otp");
         toast({ title: "Code sent!", description: `A verification code was sent to ${user.email}` });
       },
@@ -55,10 +68,11 @@ export default function Cart() {
         otpCode,
       }
     }, {
-      onSuccess: () => {
+      onSuccess: (data: any) => {
         clearCart();
-        setStep("done");
-        toast({ title: "Order placed! 🎉", description: "Check your email for order confirmation." });
+        setPurchaseIds(data?.purchaseIds || []);
+        setStep("proof");
+        toast({ title: "Order placed!", description: "Now upload your payment screenshot to complete." });
       },
       onError: (err: any) => {
         toast({ title: "Checkout failed", description: err?.message || "Invalid code or error occurred.", variant: "destructive" });
@@ -66,42 +80,157 @@ export default function Cart() {
     });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please upload an image file (PNG, JPG, WEBP).", variant: "destructive" });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max file size is 8MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setPreviewUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmitProof = async () => {
+    if (!previewUrl || purchaseIds.length === 0) return;
+    setUploading(true);
+    try {
+      await Promise.all(
+        purchaseIds.map(pid =>
+          authFetch(`/purchases/${pid}/payment-proof`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageDataUrl: previewUrl }),
+          })
+        )
+      );
+      toast({ title: "Payment proof submitted!", description: "An admin will review and activate your order." });
+      setStep("done");
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (step === "proof") {
+    return (
+      <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-lg w-full"
+        >
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mx-auto mb-4">
+              <Package className="w-10 h-10 text-primary" />
+            </div>
+            <h1 className="font-display text-3xl font-bold mb-2">Order Placed!</h1>
+            <p className="text-muted-foreground">Almost done — upload your payment screenshot to complete the order.</p>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+            <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-4 flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">Complete your purchase:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Pay using the server's accepted payment method</li>
+                  <li>Take a screenshot of your payment confirmation</li>
+                  <li>Upload it below — an admin will verify within 24 hours</li>
+                </ol>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-primary" />
+                Upload Payment Screenshot
+              </p>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              {previewUrl ? (
+                <div className="space-y-3">
+                  <div className="relative rounded-xl overflow-hidden border-2 border-primary/50 bg-background/50">
+                    <img src={previewUrl} alt="Preview" className="w-full max-h-56 object-contain" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => { setPreviewUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    >
+                      Change Image
+                    </Button>
+                    <Button
+                      className="flex-1 gap-2 bg-primary text-primary-foreground neon-glow-hover"
+                      onClick={handleSubmitProof}
+                      disabled={uploading}
+                    >
+                      <Upload className="w-4 h-4" />
+                      {uploading ? "Submitting..." : "Submit Proof"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-xl p-10 text-center transition-colors group"
+                >
+                  <ImageIcon className="w-10 h-10 text-muted-foreground group-hover:text-primary mx-auto mb-3 transition-colors" />
+                  <p className="font-semibold text-sm group-hover:text-primary transition-colors">Click to upload screenshot</p>
+                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP up to 8MB</p>
+                </button>
+              )}
+            </div>
+
+            <div className="border-t border-border pt-4 flex justify-center">
+              <button
+                onClick={() => setStep("done")}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Skip for now — I'll upload from my dashboard later
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (step === "done") {
     return (
       <div className="min-h-[calc(100vh-80px)] flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center max-w-lg w-full"
+          className="text-center max-w-md w-full"
         >
           <div className="w-24 h-24 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mx-auto mb-6">
-            <Package className="w-12 h-12 text-primary" />
+            <CheckCircle className="w-12 h-12 text-primary" />
           </div>
-          <h1 className="font-display text-4xl font-bold mb-3">Order Placed!</h1>
-          <p className="text-muted-foreground mb-8">Your order is pending. Complete payment verification to activate your purchase.</p>
-
-          <div className="bg-card border border-border rounded-2xl p-6 text-left mb-6 space-y-3">
-            <h2 className="font-bold text-sm uppercase tracking-wide text-muted-foreground mb-3">Next Steps</h2>
-            {[
-              { step: "1", text: "Complete your payment using the server's accepted method" },
-              { step: "2", text: "Take a screenshot of your payment confirmation" },
-              { step: "3", text: "Go to your Dashboard → click your order → upload the screenshot" },
-              { step: "4", text: "An admin will verify and activate your item within 24 hours" },
-            ].map(s => (
-              <div key={s.step} className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {s.step}
-                </div>
-                <p className="text-sm text-muted-foreground">{s.text}</p>
-              </div>
-            ))}
-          </div>
-
+          <h1 className="font-display text-4xl font-bold mb-3">You're all set!</h1>
+          <p className="text-muted-foreground mb-8">
+            Your order is pending review. An admin will verify your payment and activate your items within 24 hours.
+          </p>
           <div className="flex gap-3 justify-center">
             <Link href="/dashboard">
               <Button className="bg-primary text-primary-foreground gap-2">
                 <Mail className="w-4 h-4" />
-                Go to Dashboard
+                View My Orders
               </Button>
             </Link>
             <Link href="/store">
@@ -269,7 +398,7 @@ export default function Cart() {
                   )}
                 </Button>
                 <button
-                  onClick={() => { setOtpSent(false); setStep("cart"); setOtpCode(""); }}
+                  onClick={() => { setStep("cart"); setOtpCode(""); }}
                   className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   ← Back to cart

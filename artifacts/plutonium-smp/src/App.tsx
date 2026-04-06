@@ -32,7 +32,6 @@ import AdminPurchaseDetail from "@/pages/admin/purchase-detail";
 import AdminAnnouncements from "@/pages/admin/announcements";
 import AdminCoupons from "@/pages/admin/coupons";
 import AdminLeaderboard from "@/pages/admin/leaderboard";
-import AdminCurrency from "@/pages/admin/currency";
 import AdminSettings from "@/pages/admin/settings";
 import AdminRoles from "@/pages/admin/roles";
 
@@ -67,7 +66,6 @@ function Router() {
       <Route path="/admin/announcements">{() => <AdminLayout><AdminAnnouncements /></AdminLayout>}</Route>
       <Route path="/admin/coupons">{() => <AdminLayout><AdminCoupons /></AdminLayout>}</Route>
       <Route path="/admin/leaderboard">{() => <AdminLayout><AdminLeaderboard /></AdminLayout>}</Route>
-      <Route path="/admin/currency">{() => <AdminLayout><AdminCurrency /></AdminLayout>}</Route>
       <Route path="/admin/settings">{() => <AdminLayout><AdminSettings /></AdminLayout>}</Route>
       <Route path="/admin/roles">{() => <AdminLayout><AdminRoles /></AdminLayout>}</Route>
 
