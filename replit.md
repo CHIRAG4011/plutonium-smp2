@@ -52,6 +52,8 @@ artifacts-monorepo/
 - `/admin/purchases` — Purchase logs
 - `/admin/announcements` — Announcement management
 - `/admin/coupons` — Coupon/discount management
+- `/admin/currency` — OWO coin balance adjustment (user search + presets)
+- `/admin/roles` — Custom role management
 
 ## Default Admin Account
 
