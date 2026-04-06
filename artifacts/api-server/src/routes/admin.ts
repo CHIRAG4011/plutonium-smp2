@@ -299,7 +299,7 @@ router.get("/announcements", async (req, res) => {
 
 router.post("/announcements", async (req: AuthRequest, res) => {
   try {
-    const { title, content, type, imageUrl, bannerColor, pinned, scheduledAt } = req.body;
+    const { title, content, type, imageUrl, bannerColor, pinned, scheduledAt, callToActionUrl, callToActionText, expiresAt } = req.body;
     const item = await Announcement.create({
       _id: generateId(),
       title, content,
@@ -308,6 +308,9 @@ router.post("/announcements", async (req: AuthRequest, res) => {
       pinned: pinned || false,
       imageUrl: imageUrl || null,
       bannerColor: bannerColor || null,
+      callToActionUrl: callToActionUrl || null,
+      callToActionText: callToActionText || null,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
       authorId: req.user?.id || null,
       authorName: req.user?.username || null,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
@@ -321,7 +324,7 @@ router.post("/announcements", async (req: AuthRequest, res) => {
 
 router.put("/announcements/:id", async (req: AuthRequest, res) => {
   try {
-    const { title, content, type, imageUrl, bannerColor, pinned, scheduledAt } = req.body;
+    const { title, content, type, imageUrl, bannerColor, pinned, scheduledAt, callToActionUrl, callToActionText, expiresAt } = req.body;
     const updates: any = {};
     if (title !== undefined) updates.title = title;
     if (content !== undefined) updates.content = content;
@@ -330,6 +333,9 @@ router.put("/announcements/:id", async (req: AuthRequest, res) => {
     if (bannerColor !== undefined) updates.bannerColor = bannerColor || null;
     if (pinned !== undefined) updates.pinned = pinned;
     if (scheduledAt !== undefined) updates.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    if (callToActionUrl !== undefined) updates.callToActionUrl = callToActionUrl || null;
+    if (callToActionText !== undefined) updates.callToActionText = callToActionText || null;
+    if (expiresAt !== undefined) updates.expiresAt = expiresAt ? new Date(expiresAt) : null;
     const updated = await Announcement.findOneAndUpdate(
       { _id: req.params.id },
       updates,

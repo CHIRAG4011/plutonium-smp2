@@ -12,6 +12,8 @@ export interface IPurchase {
   couponUsed?: string | null;
   status: "pending" | "completed" | "failed" | "refunded";
   notes?: string | null;
+  paymentProofUrl?: string | null;
+  paymentProofSubmittedAt?: Date | null;
   createdAt: Date;
 }
 
@@ -32,6 +34,8 @@ const purchaseSchema = new Schema(
       default: "pending",
     },
     notes: { type: String, default: null },
+    paymentProofUrl: { type: String, default: null },
+    paymentProofSubmittedAt: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now },
   },
   { _id: false, timestamps: false }

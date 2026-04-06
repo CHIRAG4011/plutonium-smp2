@@ -72,17 +72,37 @@ export default function Cart() {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center max-w-md"
+          className="text-center max-w-lg w-full"
         >
-          <div className="w-20 h-20 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mx-auto mb-6">
-            <Package className="w-10 h-10 text-primary" />
+          <div className="w-24 h-24 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mx-auto mb-6">
+            <Package className="w-12 h-12 text-primary" />
           </div>
           <h1 className="font-display text-4xl font-bold mb-3">Order Placed!</h1>
-          <p className="text-muted-foreground mb-2">Your order is pending review. We'll confirm it shortly.</p>
-          <p className="text-sm text-muted-foreground mb-8">Check your email for the order confirmation details.</p>
+          <p className="text-muted-foreground mb-8">Your order is pending. Complete payment verification to activate your purchase.</p>
+
+          <div className="bg-card border border-border rounded-2xl p-6 text-left mb-6 space-y-3">
+            <h2 className="font-bold text-sm uppercase tracking-wide text-muted-foreground mb-3">Next Steps</h2>
+            {[
+              { step: "1", text: "Complete your payment using the server's accepted method" },
+              { step: "2", text: "Take a screenshot of your payment confirmation" },
+              { step: "3", text: "Go to your Dashboard → click your order → upload the screenshot" },
+              { step: "4", text: "An admin will verify and activate your item within 24 hours" },
+            ].map(s => (
+              <div key={s.step} className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                  {s.step}
+                </div>
+                <p className="text-sm text-muted-foreground">{s.text}</p>
+              </div>
+            ))}
+          </div>
+
           <div className="flex gap-3 justify-center">
             <Link href="/dashboard">
-              <Button className="bg-primary text-primary-foreground">View Orders</Button>
+              <Button className="bg-primary text-primary-foreground gap-2">
+                <Mail className="w-4 h-4" />
+                Go to Dashboard
+              </Button>
             </Link>
             <Link href="/store">
               <Button variant="outline">Continue Shopping</Button>

@@ -4,11 +4,14 @@ export interface IAnnouncement {
   id: string;
   title: string;
   content: string;
-  type: "info" | "warning" | "update" | "event";
+  type: "info" | "warning" | "update" | "event" | "maintenance";
   isActive: boolean;
   pinned: boolean;
   imageUrl?: string | null;
   bannerColor?: string | null;
+  callToActionUrl?: string | null;
+  callToActionText?: string | null;
+  expiresAt?: Date | null;
   authorId?: string | null;
   authorName?: string | null;
   authorAvatar?: string | null;
@@ -21,11 +24,14 @@ const announcementSchema = new Schema(
     _id: { type: String, required: true },
     title: { type: String, required: true },
     content: { type: String, required: true },
-    type: { type: String, enum: ["info", "warning", "update", "event"], default: "info" },
+    type: { type: String, enum: ["info", "warning", "update", "event", "maintenance"], default: "info" },
     isActive: { type: Boolean, default: true },
     pinned: { type: Boolean, default: false },
     imageUrl: { type: String, default: null },
     bannerColor: { type: String, default: null },
+    callToActionUrl: { type: String, default: null },
+    callToActionText: { type: String, default: null },
+    expiresAt: { type: Date, default: null },
     authorId: { type: String, default: null },
     authorName: { type: String, default: null },
     authorAvatar: { type: String, default: null },

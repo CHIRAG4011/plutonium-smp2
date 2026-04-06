@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useGetUserPurchases } from "@workspace/api-client-react";
-import { Redirect, Link, useSearch } from "wouter";
+import { Redirect, Link, useSearch, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { User, Calendar, Shield, ShoppingBag, Package, Clock, CheckCircle, XCircle, RotateCcw, Pencil, Check, X } from "lucide-react";
+import { User, Calendar, Shield, ShoppingBag, Package, Clock, CheckCircle, XCircle, RotateCcw, Pencil, Check, X, ExternalLink, Upload } from "lucide-react";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; icon: JSX.Element; className: string }> = {
@@ -32,6 +32,7 @@ export default function Dashboard() {
   const { user, isLoading, login: setAuthToken, refetchUser } = useAuth();
   const { toast } = useToast();
   const search = useSearch();
+  const [, setLocation] = useLocation();
   const { data: purchases, isLoading: purchasesLoading } = useGetUserPurchases({
     query: { enabled: !!user }
   });
@@ -219,11 +220,12 @@ export default function Dashboard() {
                       <TableHead>Price</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Date</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {purchases.map((p) => (
-                      <TableRow key={p.id} className="border-border">
+                      <TableRow key={p.id} className="border-border hover:bg-muted/20 cursor-pointer transition-colors" onClick={() => setLocation(`/orders/${p.id}`)}>
                         <TableCell className="font-medium">
                           <div className="flex flex-col">
                             <span>{p.itemName}</span>
@@ -231,15 +233,23 @@ export default function Dashboard() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-bold">
-                            ${(p.pricePaid / 100).toFixed(2)}
-                          </div>
+                          <div className="font-bold">${(p.pricePaid / 100).toFixed(2)}</div>
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={p.status} />
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground text-sm">
                           {format(new Date(p.createdAt), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          {p.status === "pending" && !(p as any).paymentProofUrl && (
+                            <span className="text-xs text-yellow-500 font-medium flex items-center gap-1">
+                              <Upload className="w-3 h-3" /> Upload proof
+                            </span>
+                          )}
+                          {(p as any).paymentProofUrl && (
+                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -265,10 +275,12 @@ export default function Dashboard() {
         <Card className="mt-6 border-yellow-500/30 bg-yellow-500/5">
           <CardContent className="flex items-start gap-4 pt-6">
             <Clock className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-yellow-500">You have {pending.length} pending order{pending.length > 1 ? "s" : ""}</p>
+            <div className="flex-1">
+              <p className="font-semibold text-yellow-500">
+                {pending.length} pending order{pending.length > 1 ? "s" : ""} awaiting payment verification
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
-                Pending orders are awaiting payment confirmation. Please contact an admin on our Discord server to complete your payment.
+                Click any pending order in the table above to submit your payment screenshot. An admin will review and activate your purchase.
               </p>
             </div>
           </CardContent>
