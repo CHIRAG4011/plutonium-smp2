@@ -77,7 +77,7 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 outline-none rounded-full ring-offset-background focus:ring-2 focus:ring-primary focus:ring-offset-2">
                     <Avatar className="h-10 w-10 border-2 border-primary/20 hover:border-primary transition-colors">
-                      <AvatarImage src={user.discordAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
+                      <AvatarImage src={(user as any).avatarUrl || user.discordAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
                       <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
                     </Avatar>
                   </button>
@@ -165,7 +165,7 @@ export function Navbar() {
                 <div className="space-y-3">
                   <div className="flex items-center px-3 gap-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={user.discordAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
+                      <AvatarImage src={(user as any).avatarUrl || user.discordAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} />
                       <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
