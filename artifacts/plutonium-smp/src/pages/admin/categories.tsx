@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -18,13 +19,15 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Edit2, Trash2, FolderOpen, Search, X, Lock,
-  Check, RefreshCw, AlertTriangle,
+  Check, RefreshCw, AlertTriangle, Star, Hash, Eye,
+  Tag, AlignLeft,
 } from "lucide-react";
 
 const ICON_PRESETS = [
   "⚔️", "🗝️", "✨", "🪙", "⚡", "📦", "🍃", "🛡️",
   "🔮", "💎", "🎁", "🎮", "🏆", "🌟", "🔥", "❄️",
   "🎯", "🧪", "🎪", "🌈", "🦋", "🏅", "💫", "🎵",
+  "👑", "💀", "🐉", "🌊", "⭐", "🎲", "🧲", "🦄",
 ];
 
 const COLOR_PRESETS = [
@@ -33,6 +36,9 @@ const COLOR_PRESETS = [
   "#10b981", "#a855f7", "#f43f5e", "#0ea5e9", "#eab308",
   "#14b8a6", "#6b7280", "#1d4ed8", "#7c3aed", "#b45309",
 ];
+
+const BADGE_PRESETS = ["NEW", "HOT", "SALE", "LIMITED", "POPULAR", "BEST VALUE", "SEASONAL", "EXCLUSIVE"];
+const BADGE_COLOR_PRESETS = ["#ef4444", "#f97316", "#22c55e", "#3b82f6", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4"];
 
 function authFetch(path: string, opts: RequestInit = {}) {
   const token = localStorage.getItem("plutonium_token") || "";
@@ -45,12 +51,26 @@ function authFetch(path: string, opts: RequestInit = {}) {
 const EMPTY_FORM = {
   name: "",
   value: "",
+  description: "",
   icon: "📦",
   color: "#6366f1",
+  badge: "",
+  badgeColor: "#ef4444",
+  isFeatured: false,
+  showItemCount: true,
   sortOrder: "0",
   isActive: true,
 };
 type FormState = typeof EMPTY_FORM;
+
+function SectionHeader({ icon: Icon, label }: { icon: any; label: string }) {
+  return (
+    <div className="px-4 py-2.5 bg-muted/30 border-b border-border flex items-center gap-2">
+      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+      <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">{label}</p>
+    </div>
+  );
+}
 
 function CategoryForm({
   form,
@@ -75,84 +95,90 @@ function CategoryForm({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Name + Slug Section */}
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <Label className="text-sm font-semibold">
-            Category Name <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            required
-            placeholder="e.g. Potions, Weapons, Special"
-            value={form.name}
-            onChange={handleNameChange}
-            className="bg-background h-10"
-          />
-        </div>
-
-        {!isEdit && (
+    <div className="space-y-5">
+      {/* Basic Info */}
+      <div className="rounded-xl border border-border overflow-hidden">
+        <SectionHeader icon={AlignLeft} label="Basic Info" />
+        <div className="p-4 space-y-4">
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold">
-                Slug <span className="text-destructive">*</span>
-                <span className="ml-1 text-xs font-normal text-muted-foreground">(URL key)</span>
-              </Label>
-              {!slugManual && (
-                <button
-                  type="button"
-                  onClick={() => setSlugManual(true)}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Edit manually
-                </button>
-              )}
-            </div>
-            <div className="relative">
-              <Input
-                required
-                placeholder="e.g. potions"
-                value={form.value}
-                readOnly={!slugManual}
-                onChange={e =>
-                  setForm({ ...form, value: e.target.value.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") })
-                }
-                className={`bg-background h-10 font-mono text-sm pr-9 ${!slugManual ? "text-muted-foreground" : ""}`}
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <Lock className="w-3.5 h-3.5 text-muted-foreground/40" />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Used as a filter key in the store. <strong>Cannot be changed after creation.</strong>
-            </p>
-          </div>
-        )}
-
-        {isEdit && (
-          <div className="space-y-1.5">
-            <Label className="text-sm font-semibold text-muted-foreground">
-              Slug <span className="text-xs font-normal">(cannot be changed)</span>
+            <Label className="text-sm font-semibold">
+              Category Name <span className="text-destructive">*</span>
             </Label>
-            <div className="relative">
-              <Input
-                value={form.value}
-                readOnly
-                className="bg-muted/30 h-10 font-mono text-sm text-muted-foreground pr-9"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <Lock className="w-3.5 h-3.5 text-muted-foreground/40" />
+            <Input
+              required
+              placeholder="e.g. Potions, Weapons, Special"
+              value={form.name}
+              onChange={handleNameChange}
+              className="bg-background h-10"
+            />
+          </div>
+
+          {!isEdit && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">
+                  Slug <span className="text-xs font-normal text-muted-foreground ml-1">(URL key)</span>
+                  <span className="text-destructive ml-0.5">*</span>
+                </Label>
+                {!slugManual && (
+                  <button type="button" onClick={() => setSlugManual(true)} className="text-xs text-primary hover:underline">
+                    Edit manually
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Input
+                  required
+                  placeholder="e.g. potions"
+                  value={form.value}
+                  readOnly={!slugManual}
+                  onChange={e =>
+                    setForm({ ...form, value: e.target.value.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "") })
+                  }
+                  className={`bg-background h-10 font-mono text-sm pr-9 ${!slugManual ? "text-muted-foreground" : ""}`}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Lock className="w-3.5 h-3.5 text-muted-foreground/40" />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Used as a filter key in the store. <strong>Cannot be changed after creation.</strong>
+              </p>
+            </div>
+          )}
+
+          {isEdit && (
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold text-muted-foreground">
+                Slug <span className="text-xs font-normal">(cannot be changed)</span>
+              </Label>
+              <div className="relative">
+                <Input value={form.value} readOnly className="bg-muted/30 h-10 font-mono text-sm text-muted-foreground pr-9" />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Lock className="w-3.5 h-3.5 text-muted-foreground/40" />
+                </div>
               </div>
             </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold">
+              Description <span className="text-xs font-normal text-muted-foreground ml-1">(optional)</span>
+            </Label>
+            <Textarea
+              placeholder="A short description shown in the store..."
+              value={form.description}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              className="bg-background resize-none text-sm"
+              rows={2}
+            />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Appearance */}
       <div className="rounded-xl border border-border overflow-hidden">
-        <div className="px-4 py-2.5 bg-muted/30 border-b border-border">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Appearance</p>
-        </div>
+        <SectionHeader icon={Tag} label="Appearance" />
         <div className="p-4 space-y-5">
           {/* Icon */}
           <div className="space-y-2.5">
@@ -174,16 +200,14 @@ function CategoryForm({
                 <p className="text-xs text-muted-foreground mt-1">Or pick from presets below</p>
               </div>
             </div>
-            <div className="grid grid-cols-12 gap-1 p-2 bg-muted/20 rounded-lg border border-border/50">
+            <div className="grid grid-cols-8 gap-1 p-2 bg-muted/20 rounded-lg border border-border/50">
               {ICON_PRESETS.map(emoji => (
                 <button
                   key={emoji}
                   type="button"
                   onClick={() => setForm({ ...form, icon: emoji })}
-                  className={`h-8 w-8 rounded-lg flex items-center justify-center text-base transition-all hover:scale-110 ${
-                    form.icon === emoji
-                      ? "ring-2 ring-primary bg-primary/10"
-                      : "hover:bg-muted"
+                  className={`h-9 w-full rounded-lg flex items-center justify-center text-lg transition-all hover:scale-110 ${
+                    form.icon === emoji ? "ring-2 ring-primary bg-primary/10" : "hover:bg-muted"
                   }`}
                 >
                   {emoji}
@@ -192,7 +216,7 @@ function CategoryForm({
             </div>
           </div>
 
-          {/* Color */}
+          {/* Accent Color */}
           <div className="space-y-2.5">
             <Label className="text-sm font-semibold">Accent Color</Label>
             <div className="flex items-center gap-2 flex-wrap p-2 bg-muted/20 rounded-lg border border-border/50">
@@ -218,33 +242,128 @@ function CategoryForm({
                   onChange={e => setForm({ ...form, color: e.target.value })}
                   className="w-10 h-8 p-0.5 rounded cursor-pointer border-border"
                 />
-                <code
-                  className="text-xs px-2 py-1 rounded bg-background border border-border font-mono"
-                  style={{ color: form.color }}
-                >
+                <code className="text-xs px-2 py-1 rounded bg-background border border-border font-mono" style={{ color: form.color }}>
                   {form.color}
                 </code>
               </div>
             </div>
           </div>
 
+          {/* Badge */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold">
+                Badge Label <span className="text-xs font-normal text-muted-foreground ml-1">(optional)</span>
+              </Label>
+              {form.badge && (
+                <button type="button" onClick={() => setForm({ ...form, badge: "" })} className="text-xs text-muted-foreground hover:text-foreground">
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={form.badge}
+                onChange={e => setForm({ ...form, badge: e.target.value.toUpperCase() })}
+                placeholder="e.g. NEW, HOT, SALE"
+                className="bg-background h-9 text-sm uppercase font-medium flex-1"
+                maxLength={16}
+              />
+              {form.badge && (
+                <div
+                  className="flex items-center px-3 rounded-lg text-white text-xs font-bold flex-shrink-0"
+                  style={{ background: form.badgeColor }}
+                >
+                  {form.badge}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-1.5 flex-wrap">
+              {BADGE_PRESETS.map(b => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => setForm({ ...form, badge: b })}
+                  className={`text-xs px-2 py-1 rounded-md border transition-all ${
+                    form.badge === b ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/20 hover:bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+            {form.badge && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-muted-foreground">Badge Color</Label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {BADGE_COLOR_PRESETS.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setForm({ ...form, badgeColor: c })}
+                      className="w-7 h-7 rounded-full transition-all hover:scale-110 border-2 flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background: c,
+                        borderColor: form.badgeColor === c ? "white" : "transparent",
+                        boxShadow: form.badgeColor === c ? `0 0 0 2px ${c}` : "none",
+                      }}
+                    >
+                      {form.badgeColor === c && <Check className="w-3 h-3 text-white drop-shadow" />}
+                    </button>
+                  ))}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Input
+                      type="color"
+                      value={form.badgeColor}
+                      onChange={e => setForm({ ...form, badgeColor: e.target.value })}
+                      className="w-10 h-8 p-0.5 rounded cursor-pointer border-border"
+                    />
+                    <code className="text-xs px-2 py-1 rounded bg-background border border-border font-mono" style={{ color: form.badgeColor }}>
+                      {form.badgeColor}
+                    </code>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Live Preview */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold text-muted-foreground">Live Preview</Label>
-            <div className="flex gap-2 flex-wrap items-center p-3 bg-muted/20 rounded-lg border border-border/50">
-              <span
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border"
-                style={{ background: form.color, borderColor: form.color, color: "white" }}
-              >
-                {form.icon} {form.name || "Category Name"}
-              </span>
-              <span
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border"
-                style={{ background: `${form.color}18`, borderColor: `${form.color}50`, color: form.color }}
-              >
-                {form.icon} {form.name || "Category Name"}
-              </span>
-              <span className="text-xs text-muted-foreground ml-1">Solid · Outline</span>
+            <div className="flex gap-3 flex-wrap items-center p-3 bg-muted/20 rounded-lg border border-border/50">
+              <div className="relative inline-flex">
+                <span
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border"
+                  style={{ background: form.color, borderColor: form.color, color: "white" }}
+                >
+                  {form.icon} {form.name || "Category Name"}
+                </span>
+                {form.badge && (
+                  <span
+                    className="absolute -top-2 -right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                    style={{ background: form.badgeColor }}
+                  >
+                    {form.badge}
+                  </span>
+                )}
+              </div>
+              <div className="relative inline-flex">
+                <span
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border"
+                  style={{ background: `${form.color}18`, borderColor: `${form.color}50`, color: form.color }}
+                >
+                  {form.icon} {form.name || "Category Name"}
+                </span>
+                {form.badge && (
+                  <span
+                    className="absolute -top-2 -right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                    style={{ background: form.badgeColor }}
+                  >
+                    {form.badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground">Solid · Outline</span>
             </div>
           </div>
         </div>
@@ -252,32 +371,56 @@ function CategoryForm({
 
       {/* Settings */}
       <div className="rounded-xl border border-border overflow-hidden">
-        <div className="px-4 py-2.5 bg-muted/30 border-b border-border">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Settings</p>
-        </div>
-        <div className="p-4 grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-sm font-semibold">Sort Order</Label>
-            <Input
-              type="number"
-              value={form.sortOrder}
-              onChange={e => setForm({ ...form, sortOrder: e.target.value })}
-              className="bg-background h-10"
-            />
-            <p className="text-xs text-muted-foreground">Lower number = shown first</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-sm font-semibold">Visibility</Label>
-            <div className="flex items-center gap-3 h-10 px-3 rounded-lg bg-muted/20 border border-border/50">
-              <Switch
-                checked={form.isActive}
-                onCheckedChange={v => setForm({ ...form, isActive: v })}
+        <SectionHeader icon={Hash} label="Settings" />
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Sort Order</Label>
+              <Input
+                type="number"
+                value={form.sortOrder}
+                onChange={e => setForm({ ...form, sortOrder: e.target.value })}
+                className="bg-background h-10"
               />
-              <span className={`text-sm font-medium ${form.isActive ? "text-green-500" : "text-muted-foreground"}`}>
-                {form.isActive ? "Visible" : "Hidden"}
-              </span>
+              <p className="text-xs text-muted-foreground">Lower number = shown first</p>
             </div>
-            <p className="text-xs text-muted-foreground">Show as a filter tab in store</p>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Visibility</Label>
+              <div className="flex items-center gap-3 h-10 px-3 rounded-lg bg-muted/20 border border-border/50">
+                <Switch checked={form.isActive} onCheckedChange={v => setForm({ ...form, isActive: v })} />
+                <span className={`text-sm font-medium ${form.isActive ? "text-green-500" : "text-muted-foreground"}`}>
+                  {form.isActive ? "Visible" : "Hidden"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">Show as a filter tab in store</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                <Star className="w-3.5 h-3.5 text-amber-400" /> Featured
+              </Label>
+              <div className="flex items-center gap-3 h-10 px-3 rounded-lg bg-muted/20 border border-border/50">
+                <Switch checked={form.isFeatured} onCheckedChange={v => setForm({ ...form, isFeatured: v })} />
+                <span className={`text-sm font-medium ${form.isFeatured ? "text-amber-400" : "text-muted-foreground"}`}>
+                  {form.isFeatured ? "Featured" : "Normal"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">Highlight in the store</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-blue-400" /> Show Item Count
+              </Label>
+              <div className="flex items-center gap-3 h-10 px-3 rounded-lg bg-muted/20 border border-border/50">
+                <Switch checked={form.showItemCount} onCheckedChange={v => setForm({ ...form, showItemCount: v })} />
+                <span className={`text-sm font-medium ${form.showItemCount ? "text-blue-400" : "text-muted-foreground"}`}>
+                  {form.showItemCount ? "Shown" : "Hidden"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">Display item count on tab</p>
+            </div>
           </div>
         </div>
       </div>
@@ -318,8 +461,13 @@ export default function AdminCategories() {
     setForm({
       name: cat.name,
       value: cat.value,
+      description: cat.description || "",
       icon: cat.icon || "📦",
       color: cat.color || "#6366f1",
+      badge: cat.badge || "",
+      badgeColor: cat.badgeColor || "#ef4444",
+      isFeatured: cat.isFeatured || false,
+      showItemCount: cat.showItemCount !== false,
       sortOrder: String(cat.sortOrder ?? 0),
       isActive: cat.isActive !== false,
     });
@@ -333,9 +481,19 @@ export default function AdminCategories() {
       const isEdit = !!editTarget;
       const url = isEdit ? `/admin/store-categories/${editTarget.id}` : "/admin/store-categories";
       const method = isEdit ? "PUT" : "POST";
-      const body = isEdit
-        ? { name: form.name, icon: form.icon, color: form.color, sortOrder: Number(form.sortOrder), isActive: form.isActive }
-        : { name: form.name, value: form.value, icon: form.icon, color: form.color, sortOrder: Number(form.sortOrder), isActive: form.isActive };
+      const common = {
+        name: form.name,
+        description: form.description || null,
+        icon: form.icon,
+        color: form.color,
+        badge: form.badge || null,
+        badgeColor: form.badgeColor,
+        isFeatured: form.isFeatured,
+        showItemCount: form.showItemCount,
+        sortOrder: Number(form.sortOrder),
+        isActive: form.isActive,
+      };
+      const body = isEdit ? common : { ...common, value: form.value };
       const r = await authFetch(url, { method, body: JSON.stringify(body) });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
@@ -392,18 +550,22 @@ export default function AdminCategories() {
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-2xl font-bold">{cats.length}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Total Categories</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Total</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-2xl font-bold text-primary">{cats.filter(c => c.isActive).length}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Visible in Store</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Visible</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="text-2xl font-bold text-amber-400">{cats.filter(c => c.isFeatured).length}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Featured</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-2xl font-bold">{cats.filter(c => !c.isBuiltin).length}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Custom Categories</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Custom</div>
         </div>
       </div>
 
@@ -431,45 +593,29 @@ export default function AdminCategories() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Built-in */}
           {builtins.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Built-in ({builtins.length})
-                </span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Built-in ({builtins.length})</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
               <div className="space-y-2">
                 {builtins.map(cat => (
-                  <CategoryRow
-                    key={cat.id}
-                    cat={cat}
-                    onEdit={openEdit}
-                    onDelete={setDeleteTarget}
-                  />
+                  <CategoryRow key={cat.id} cat={cat} onEdit={openEdit} onDelete={setDeleteTarget} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Custom */}
           {custom.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Custom ({custom.length})
-                </span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Custom ({custom.length})</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
               <div className="space-y-2">
                 {custom.map(cat => (
-                  <CategoryRow
-                    key={cat.id}
-                    cat={cat}
-                    onEdit={openEdit}
-                    onDelete={setDeleteTarget}
-                  />
+                  <CategoryRow key={cat.id} cat={cat} onEdit={openEdit} onDelete={setDeleteTarget} />
                 ))}
               </div>
             </div>
@@ -499,18 +645,14 @@ export default function AdminCategories() {
             </DialogTitle>
             <DialogDescription>
               {editTarget?.isBuiltin
-                ? "Edit the name, icon, color, sort order, and visibility of this built-in category."
+                ? "Edit this built-in category's details, appearance and settings."
                 : editTarget
                 ? "Update this category's appearance and settings."
                 : "Add a new filter category to your store."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 pt-1">
-            <CategoryForm
-              form={form}
-              setForm={setForm}
-              isEdit={!!editTarget}
-            />
+            <CategoryForm form={form} setForm={setForm} isEdit={!!editTarget} />
             <div className="flex gap-3 pt-2 border-t border-border">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setDialogOpen(false)}>
                 Cancel
@@ -576,18 +718,36 @@ function CategoryRow({ cat, onEdit, onDelete }: {
         {cat.icon || "📦"}
       </div>
 
-      {/* Name + slug */}
+      {/* Name + slug + description */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-sm">{cat.name}</span>
           {cat.isBuiltin && (
             <Badge variant="outline" className="text-xs py-0 h-4 text-muted-foreground border-muted-foreground/30">built-in</Badge>
           )}
+          {cat.isFeatured && (
+            <Badge variant="outline" className="text-xs py-0 h-4 text-amber-400 border-amber-400/30">
+              <Star className="w-2.5 h-2.5 mr-0.5" /> featured
+            </Badge>
+          )}
+          {cat.badge && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
+              style={{ background: cat.badgeColor || "#ef4444" }}
+            >
+              {cat.badge}
+            </span>
+          )}
           {!cat.isActive && (
             <Badge variant="outline" className="text-xs py-0 h-4 text-muted-foreground/60 border-muted-foreground/20">hidden</Badge>
           )}
         </div>
-        <span className="text-xs font-mono text-muted-foreground">{cat.value}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-muted-foreground">{cat.value}</span>
+          {cat.description && (
+            <span className="text-xs text-muted-foreground/60 truncate max-w-[180px]">· {cat.description}</span>
+          )}
+        </div>
       </div>
 
       {/* Color swatch */}
@@ -597,7 +757,7 @@ function CategoryRow({ cat, onEdit, onDelete }: {
       </div>
 
       {/* Sort order */}
-      <span className="hidden sm:block text-xs text-muted-foreground w-10 text-center flex-shrink-0">
+      <span className="hidden sm:block text-xs text-muted-foreground w-8 text-center flex-shrink-0">
         #{cat.sortOrder ?? 0}
       </span>
 

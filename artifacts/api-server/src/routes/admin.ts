@@ -922,7 +922,7 @@ router.get("/store-categories", async (req, res) => {
 
 router.post("/store-categories", requireAdmin, async (req, res) => {
   try {
-    const { name, value, icon, color, sortOrder } = req.body;
+    const { name, value, icon, color, sortOrder, description, badge, badgeColor, isFeatured, showItemCount, isActive } = req.body;
     if (!name?.trim() || !value?.trim()) {
       res.status(400).json({ error: "Name and value are required" });
       return;
@@ -934,10 +934,15 @@ router.post("/store-categories", requireAdmin, async (req, res) => {
       _id: generateId(),
       name: name.trim(),
       value: slug,
+      description: description?.trim() || null,
       icon: icon || null,
       color: color || "#6366f1",
+      badge: badge?.trim() || null,
+      badgeColor: badgeColor || "#ef4444",
+      isFeatured: !!isFeatured,
+      showItemCount: isActive !== undefined ? !!showItemCount : true,
       sortOrder: Number(sortOrder) || 0,
-      isActive: true,
+      isActive: isActive !== undefined ? !!isActive : true,
     });
     res.json(cat.toJSON());
   } catch (err) {
@@ -948,13 +953,18 @@ router.post("/store-categories", requireAdmin, async (req, res) => {
 
 router.put("/store-categories/:id", requireAdmin, async (req, res) => {
   try {
-    const { name, icon, color, sortOrder, isActive } = req.body;
+    const { name, icon, color, sortOrder, isActive, description, badge, badgeColor, isFeatured, showItemCount } = req.body;
     const updated = await StoreCategory.findOneAndUpdate(
       { _id: req.params.id },
       {
         ...(name !== undefined && { name: name.trim() }),
+        ...(description !== undefined && { description: description?.trim() || null }),
         ...(icon !== undefined && { icon: icon || null }),
         ...(color !== undefined && { color }),
+        ...(badge !== undefined && { badge: badge?.trim() || null }),
+        ...(badgeColor !== undefined && { badgeColor }),
+        ...(isFeatured !== undefined && { isFeatured: !!isFeatured }),
+        ...(showItemCount !== undefined && { showItemCount: !!showItemCount }),
         ...(sortOrder !== undefined && { sortOrder: Number(sortOrder) }),
         ...(isActive !== undefined && { isActive }),
       },
