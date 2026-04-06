@@ -45,6 +45,16 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
   });
 }
 
+export function requireModerator(req: AuthRequest, res: Response, next: NextFunction) {
+  requireAuth(req, res, () => {
+    if (!req.user || !["moderator", "admin", "owner"].includes(req.user.role)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    next();
+  });
+}
+
 export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {

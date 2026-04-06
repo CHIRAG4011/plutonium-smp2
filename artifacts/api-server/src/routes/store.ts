@@ -132,6 +132,7 @@ router.post("/purchase", requireAuth, async (req: AuthRequest, res) => {
     const purchase = await Purchase.create({
       _id: generateId(),
       userId: user.id,
+      username: user.username || "",
       itemId: item.id,
       itemName: item.name,
       itemCategory: item.category,
@@ -233,9 +234,11 @@ router.post("/checkout", requireAuth, async (req: AuthRequest, res) => {
       orderItems.push({ name: storeItem.name, price: unitPrice, quantity: qty });
 
       for (let q = 0; q < qty; q++) {
+        const purchaseId = generateId();
         await Purchase.create({
-          _id: generateId(),
+          _id: purchaseId,
           userId: user.id,
+          username: user.username || "",
           itemId: storeItem.id,
           itemName: storeItem.name,
           itemCategory: storeItem.category,

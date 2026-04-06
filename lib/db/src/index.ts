@@ -21,3 +21,5 @@ export { TicketMessage } from "./models/TicketMessage.js";
 export type { ITicketMessage } from "./models/TicketMessage.js";
 export { ServerConfig } from "./models/ServerConfig.js";
 export type { IServerConfig } from "./models/ServerConfig.js";
+export { CustomRole, ALL_PERMISSIONS } from "./models/CustomRole.js";
+export type { ICustomRole, Permission } from "./models/CustomRole.js";

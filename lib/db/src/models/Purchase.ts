@@ -3,6 +3,7 @@ import mongoose, { Schema, Model } from "mongoose";
 export interface IPurchase {
   id: string;
   userId: string;
+  username: string;
   itemId: string;
   itemName: string;
   itemCategory: string;
@@ -10,6 +11,7 @@ export interface IPurchase {
   currency: string;
   couponUsed?: string | null;
   status: "pending" | "completed" | "failed" | "refunded";
+  notes?: string | null;
   createdAt: Date;
 }
 
@@ -17,6 +19,7 @@ const purchaseSchema = new Schema(
   {
     _id: { type: String, required: true },
     userId: { type: String, required: true },
+    username: { type: String, default: "" },
     itemId: { type: String, required: true },
     itemName: { type: String, required: true },
     itemCategory: { type: String, required: true },
@@ -28,6 +31,7 @@ const purchaseSchema = new Schema(
       enum: ["pending", "completed", "failed", "refunded"],
       default: "pending",
     },
+    notes: { type: String, default: null },
     createdAt: { type: Date, default: Date.now },
   },
   { _id: false, timestamps: false }

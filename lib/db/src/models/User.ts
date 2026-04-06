@@ -10,6 +10,7 @@ export interface IUser {
   discordUsername?: string | null;
   discordAvatar?: string | null;
   minecraftUsername?: string | null;
+  customRole?: string | null;
   owoBalance: number;
   isBanned: boolean;
   banReason?: string | null;
@@ -31,6 +32,7 @@ const userSchema = new Schema(
     discordUsername: { type: String, default: null },
     discordAvatar: { type: String, default: null },
     minecraftUsername: { type: String, default: null },
+    customRole: { type: String, default: null },
     owoBalance: { type: Number, default: 0 },
     isBanned: { type: Boolean, default: false },
     banReason: { type: String, default: null },

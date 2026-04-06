@@ -3,11 +3,15 @@ import mongoose, { Schema, Model } from "mongoose";
 export interface ICoupon {
   id: string;
   code: string;
+  discountType: "percent" | "fixed";
   discountPercent: number;
+  discountFixed?: number | null;
   usageLimit?: number | null;
   usageCount: number;
+  minCartValue?: number | null;
   expiresAt?: Date | null;
   isActive: boolean;
+  description?: string | null;
   createdAt: Date;
 }
 
@@ -15,11 +19,15 @@ const couponSchema = new Schema(
   {
     _id: { type: String, required: true },
     code: { type: String, required: true, unique: true },
-    discountPercent: { type: Number, required: true },
+    discountType: { type: String, enum: ["percent", "fixed"], default: "percent" },
+    discountPercent: { type: Number, default: 0 },
+    discountFixed: { type: Number, default: null },
     usageLimit: { type: Number, default: null },
     usageCount: { type: Number, default: 0 },
+    minCartValue: { type: Number, default: null },
     expiresAt: { type: Date, default: null },
     isActive: { type: Boolean, default: true },
+    description: { type: String, default: null },
     createdAt: { type: Date, default: Date.now },
   },
   { _id: false, timestamps: false }

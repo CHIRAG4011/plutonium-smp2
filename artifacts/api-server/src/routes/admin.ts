@@ -1,14 +1,14 @@
 import { Router } from "express";
 import {
   User, StoreItem, Purchase, Ticket,
-  Announcement, Coupon, Leaderboard, ServerConfig,
+  Announcement, Coupon, Leaderboard, ServerConfig, CustomRole,
 } from "@workspace/db";
-import { requireAdmin, AuthRequest } from "../lib/auth.js";
+import { requireAdmin, requireModerator, AuthRequest } from "../lib/auth.js";
 import { generateId } from "../lib/id.js";
 import bcrypt from "bcryptjs";
 
 const router = Router();
-router.use(requireAdmin);
+router.use(requireModerator);
 
 const TIER_ORDER: Record<string, number> = {
   HT1: 1, HT2: 2, HT3: 3, HT4: 4, HT5: 5,
@@ -93,7 +93,7 @@ router.get("/users", async (req, res) => {
   }
 });
 
-router.post("/users/:id/ban", async (req, res) => {
+router.post("/users/:id/ban", requireAdmin, async (req, res) => {
   try {
     const { reason } = req.body;
     await User.updateOne(
@@ -107,7 +107,7 @@ router.post("/users/:id/ban", async (req, res) => {
   }
 });
 
-router.post("/users/:id/unban", async (req, res) => {
+router.post("/users/:id/unban", requireAdmin, async (req, res) => {
   try {
     await User.updateOne({ _id: req.params.id }, { isBanned: false, banReason: null });
     res.json({ message: "User unbanned" });
@@ -117,7 +117,7 @@ router.post("/users/:id/unban", async (req, res) => {
   }
 });
 
-router.post("/users/:id/role", async (req: AuthRequest, res) => {
+router.post("/users/:id/role", requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { role } = req.body;
     const validRoles = ["user", "moderator", "admin"];
@@ -146,9 +146,9 @@ router.post("/users/:id/role", async (req: AuthRequest, res) => {
   }
 });
 
-router.put("/users/:userId/rank", async (req, res) => {
+router.put("/users/:userId/rank", requireAdmin, async (req, res) => {
   try {
-    const { activeRank, minecraftUsername } = req.body;
+    const { activeRank, minecraftUsername, customRole } = req.body;
     const user = await User.findOne({ _id: req.params.userId });
     if (!user) {
       res.status(404).json({ error: "User not found" });
@@ -157,6 +157,7 @@ router.put("/users/:userId/rank", async (req, res) => {
     const userUpdates: any = { updatedAt: new Date() };
     if (activeRank !== undefined) userUpdates.activeRank = activeRank || null;
     if (minecraftUsername !== undefined) userUpdates.minecraftUsername = minecraftUsername || null;
+    if (customRole !== undefined) userUpdates.customRole = customRole || null;
     await User.updateOne({ _id: req.params.userId }, userUpdates);
     await Leaderboard.updateOne(
       { userId: req.params.userId },
@@ -171,7 +172,7 @@ router.put("/users/:userId/rank", async (req, res) => {
   }
 });
 
-router.post("/store/items", async (req, res) => {
+router.post("/store/items", requireAdmin, async (req, res) => {
   try {
     const { name, description, category, price, currency, imageUrl, images, features, isActive, isFeatured, badge, badgeColor, sortOrder } = req.body;
     const item = await StoreItem.create({
@@ -195,7 +196,7 @@ router.post("/store/items", async (req, res) => {
   }
 });
 
-router.put("/store/items/:id", async (req, res) => {
+router.put("/store/items/:id", requireAdmin, async (req, res) => {
   try {
     const { name, description, category, price, currency, imageUrl, images, features, isActive, isFeatured, badge, badgeColor, sortOrder } = req.body;
     const item = await StoreItem.findOneAndUpdate(
@@ -223,7 +224,7 @@ router.put("/store/items/:id", async (req, res) => {
   }
 });
 
-router.delete("/store/items/:id", async (req, res) => {
+router.delete("/store/items/:id", requireAdmin, async (req, res) => {
   try {
     await StoreItem.deleteOne({ _id: req.params.id });
     res.json({ message: "Item deleted" });
@@ -253,9 +254,42 @@ router.get("/purchases", async (req, res) => {
   }
 });
 
+router.get("/purchases/:id", async (req, res) => {
+  try {
+    const purchase = await Purchase.findOne({ _id: req.params.id });
+    if (!purchase) { res.status(404).json({ error: "Not found" }); return; }
+    const user = await User.findOne({ _id: purchase.userId });
+    res.json({ ...purchase.toJSON(), user: user ? { id: user.id, username: user.username, email: user.email, discordAvatar: user.discordAvatar } : null });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/purchases/:id/status", requireAdmin, async (req, res) => {
+  try {
+    const { status, notes } = req.body;
+    const validStatuses = ["pending", "completed", "failed", "refunded"];
+    if (!validStatuses.includes(status)) {
+      res.status(400).json({ error: "Invalid status" });
+      return;
+    }
+    const updated = await Purchase.findOneAndUpdate(
+      { _id: req.params.id },
+      { status, notes: notes || null },
+      { new: true }
+    );
+    if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(updated.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/announcements", async (req, res) => {
   try {
-    const items = await Announcement.find().sort({ createdAt: -1 });
+    const items = await Announcement.find().sort({ pinned: -1, createdAt: -1 });
     res.json(items.map((a) => a.toJSON()));
   } catch (err) {
     req.log.error(err);
@@ -265,16 +299,86 @@ router.get("/announcements", async (req, res) => {
 
 router.post("/announcements", async (req: AuthRequest, res) => {
   try {
-    const { title, content, type } = req.body;
+    const { title, content, type, imageUrl, bannerColor, pinned, scheduledAt } = req.body;
     const item = await Announcement.create({
       _id: generateId(),
       title, content,
       type: type || "info",
       isActive: true,
+      pinned: pinned || false,
+      imageUrl: imageUrl || null,
+      bannerColor: bannerColor || null,
       authorId: req.user?.id || null,
       authorName: req.user?.username || null,
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
     });
     res.json(item.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/announcements/:id", async (req: AuthRequest, res) => {
+  try {
+    const { title, content, type, imageUrl, bannerColor, pinned, scheduledAt } = req.body;
+    const updates: any = {};
+    if (title !== undefined) updates.title = title;
+    if (content !== undefined) updates.content = content;
+    if (type !== undefined) updates.type = type;
+    if (imageUrl !== undefined) updates.imageUrl = imageUrl || null;
+    if (bannerColor !== undefined) updates.bannerColor = bannerColor || null;
+    if (pinned !== undefined) updates.pinned = pinned;
+    if (scheduledAt !== undefined) updates.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    const updated = await Announcement.findOneAndUpdate(
+      { _id: req.params.id },
+      updates,
+      { new: true }
+    );
+    if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(updated.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/announcements/:id", requireAdmin, async (req, res) => {
+  try {
+    await Announcement.deleteOne({ _id: req.params.id });
+    res.json({ message: "Announcement deleted" });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/announcements/:id/toggle", async (req, res) => {
+  try {
+    const item = await Announcement.findOne({ _id: req.params.id });
+    if (!item) { res.status(404).json({ error: "Not found" }); return; }
+    const updated = await Announcement.findOneAndUpdate(
+      { _id: req.params.id },
+      { isActive: !item.isActive },
+      { new: true }
+    );
+    res.json(updated?.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/announcements/:id/pin", async (req, res) => {
+  try {
+    const item = await Announcement.findOne({ _id: req.params.id });
+    if (!item) { res.status(404).json({ error: "Not found" }); return; }
+    const updated = await Announcement.findOneAndUpdate(
+      { _id: req.params.id },
+      { pinned: !item.pinned },
+      { new: true }
+    );
+    res.json(updated?.toJSON());
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -293,13 +397,17 @@ router.get("/coupons", async (req, res) => {
 
 router.post("/coupons", async (req, res) => {
   try {
-    const { code, discountPercent, usageLimit, expiresAt } = req.body;
+    const { code, discountType, discountPercent, discountFixed, usageLimit, expiresAt, minCartValue, description } = req.body;
     const coupon = await Coupon.create({
       _id: generateId(),
-      code,
-      discountPercent: Number(discountPercent),
+      code: code.trim().toUpperCase(),
+      discountType: discountType || "percent",
+      discountPercent: Number(discountPercent) || 0,
+      discountFixed: discountFixed ? Number(discountFixed) : null,
       usageLimit: usageLimit ? Number(usageLimit) : null,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
+      minCartValue: minCartValue ? Number(minCartValue) : null,
+      description: description || null,
       isActive: true,
     });
     res.json(coupon.toJSON());
@@ -309,7 +417,33 @@ router.post("/coupons", async (req, res) => {
   }
 });
 
-router.post("/currency/adjust", async (req, res) => {
+router.patch("/coupons/:id/toggle", async (req, res) => {
+  try {
+    const coupon = await Coupon.findOne({ _id: req.params.id });
+    if (!coupon) { res.status(404).json({ error: "Not found" }); return; }
+    const updated = await Coupon.findOneAndUpdate(
+      { _id: req.params.id },
+      { isActive: !coupon.isActive },
+      { new: true }
+    );
+    res.json(updated?.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/coupons/:id", requireAdmin, async (req, res) => {
+  try {
+    await Coupon.deleteOne({ _id: req.params.id });
+    res.json({ message: "Coupon deleted" });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/currency/adjust", requireAdmin, async (req, res) => {
   try {
     const { userId, amount, reason } = req.body;
     const user = await User.findOne({ _id: userId });
@@ -523,13 +657,63 @@ router.post("/seed", async (req, res) => {
   }
 });
 
-router.get("/roles", (_req, res) => {
-  res.json([
-    { id: "1", name: "owner", permissions: ["*"], color: "#FF6B6B", createdAt: new Date().toISOString() },
-    { id: "2", name: "admin", permissions: ["manage_users", "manage_store", "manage_tickets", "manage_announcements"], color: "#4ADE80", createdAt: new Date().toISOString() },
-    { id: "3", name: "moderator", permissions: ["manage_tickets", "view_users"], color: "#60A5FA", createdAt: new Date().toISOString() },
-    { id: "4", name: "user", permissions: ["purchase", "tickets", "leaderboard"], color: "#9CA3AF", createdAt: new Date().toISOString() },
-  ]);
+router.get("/custom-roles", requireAdmin, async (req, res) => {
+  try {
+    const roles = await CustomRole.find().sort({ createdAt: 1 });
+    res.json(roles.map((r) => r.toJSON()));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/custom-roles", requireAdmin, async (req, res) => {
+  try {
+    const { name, color, permissions } = req.body;
+    if (!name?.trim()) { res.status(400).json({ error: "Name is required" }); return; }
+    const existing = await CustomRole.findOne({ name: name.trim() });
+    if (existing) { res.status(400).json({ error: "A role with this name already exists" }); return; }
+    const role = await CustomRole.create({
+      _id: generateId(),
+      name: name.trim(),
+      color: color || "#6366f1",
+      permissions: Array.isArray(permissions) ? permissions : [],
+    });
+    res.json(role.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/custom-roles/:id", requireAdmin, async (req, res) => {
+  try {
+    const { name, color, permissions } = req.body;
+    const updates: any = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (color !== undefined) updates.color = color;
+    if (permissions !== undefined) updates.permissions = Array.isArray(permissions) ? permissions : [];
+    const updated = await CustomRole.findOneAndUpdate(
+      { _id: req.params.id },
+      updates,
+      { new: true }
+    );
+    if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(updated.toJSON());
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/custom-roles/:id", requireAdmin, async (req, res) => {
+  try {
+    await CustomRole.deleteOne({ _id: req.params.id });
+    res.json({ message: "Role deleted" });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 router.get("/leaderboard", async (req, res) => {
