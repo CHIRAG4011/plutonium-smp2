@@ -8,6 +8,7 @@ export interface IStoreCategory {
   color?: string;
   sortOrder: number;
   isActive: boolean;
+  isBuiltin: boolean;
   createdAt: Date;
 }
 
@@ -20,6 +21,7 @@ const storeCategorySchema = new Schema(
     color: { type: String, default: "#6366f1" },
     sortOrder: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
+    isBuiltin: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
   },
   { _id: false, timestamps: false }

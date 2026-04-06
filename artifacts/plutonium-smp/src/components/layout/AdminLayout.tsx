@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {
   LayoutDashboard, Users, ShoppingBag, Ticket, CreditCard,
-  Megaphone, Tag, ShieldCheck, Trophy, Settings, Shield, Star, Wallet,
+  Megaphone, Tag, ShieldCheck, Trophy, Settings, Shield, Star, FolderOpen,
 } from "lucide-react";
 
 const ADMIN_ROLES = ["admin", "owner"] as const;
@@ -54,7 +54,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     { name: "Purchases",    href: "/admin/purchases",      icon: CreditCard,      permission: "view_purchases"    },
     { name: "Announcements",href: "/admin/announcements",  icon: Megaphone,       permission: "view_announcements"},
     { name: "Coupons",      href: "/admin/coupons",        icon: Tag,             permission: "view_coupons"      },
-    { name: "Currency",     href: "/admin/currency",       icon: Wallet,          permission: "view_currency"     },
+    { name: "Categories",   href: "/admin/categories",     icon: FolderOpen,      permission: "manage_store_categories" },
     { name: "Ranks",        href: "/admin/ranks",          icon: Star,            permission: "view_ranks"        },
     { name: "Custom Roles", href: "/admin/roles",          icon: Shield,          permission: "view_roles"        },
     { name: "Settings",     href: "/admin/settings",       icon: Settings,        permission: "view_settings"     },

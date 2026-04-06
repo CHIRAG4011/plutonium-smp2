@@ -881,8 +881,38 @@ router.delete("/ranks/:id", requireAdmin, async (req, res) => {
   }
 });
 
+const BUILTIN_CATEGORIES = [
+  { name: "Ranks",       value: "ranks",       icon: "⚔️",  color: "#22c55e", sortOrder: 0 },
+  { name: "Crate Keys",  value: "crate_keys",  icon: "🗝️",  color: "#f59e0b", sortOrder: 1 },
+  { name: "Cosmetics",   value: "cosmetics",   icon: "✨",  color: "#a855f7", sortOrder: 2 },
+  { name: "Coins",       value: "coins",       icon: "🪙",  color: "#eab308", sortOrder: 3 },
+  { name: "Boosts",      value: "boosts",      icon: "⚡",  color: "#3b82f6", sortOrder: 4 },
+  { name: "Bundles",     value: "bundles",     icon: "📦",  color: "#f97316", sortOrder: 5 },
+  { name: "Seasonal",    value: "seasonal",    icon: "🍃",  color: "#10b981", sortOrder: 6 },
+  { name: "Permissions", value: "permissions", icon: "🛡️",  color: "#6366f1", sortOrder: 7 },
+];
+
+async function seedBuiltinCategories() {
+  for (const cat of BUILTIN_CATEGORIES) {
+    const existing = await StoreCategory.findOne({ value: cat.value });
+    if (!existing) {
+      await StoreCategory.create({
+        _id: cat.value,
+        name: cat.name,
+        value: cat.value,
+        icon: cat.icon,
+        color: cat.color,
+        sortOrder: cat.sortOrder,
+        isActive: true,
+        isBuiltin: true,
+      });
+    }
+  }
+}
+
 router.get("/store-categories", async (req, res) => {
   try {
+    await seedBuiltinCategories();
     const cats = await StoreCategory.find().sort({ sortOrder: 1, createdAt: 1 });
     res.json(cats.map((c) => c.toJSON()));
   } catch (err) {
