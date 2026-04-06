@@ -2,6 +2,7 @@ import mongoose, { Schema, Model } from "mongoose";
 
 export interface IPurchase {
   id: string;
+  orderNumber: string;
   userId: string;
   username: string;
   itemId: string;
@@ -20,6 +21,7 @@ export interface IPurchase {
 const purchaseSchema = new Schema(
   {
     _id: { type: String, required: true },
+    orderNumber: { type: String, default: "" },
     userId: { type: String, required: true },
     username: { type: String, default: "" },
     itemId: { type: String, required: true },

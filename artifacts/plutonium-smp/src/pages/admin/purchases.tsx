@@ -120,7 +120,7 @@ export default function AdminPurchases() {
                 className="border-border hover:bg-muted/20 cursor-pointer transition-colors"
                 onClick={() => setLocation(`/admin/purchases/${p.id}`)}
               >
-                <TableCell className="font-mono text-xs text-muted-foreground">{p.id.slice(0, 10)}…</TableCell>
+                <TableCell className="font-mono text-xs font-semibold">{(p as any).orderNumber || p.id.slice(0, 10) + "…"}</TableCell>
                 <TableCell>
                   <div>
                     <span className="font-medium">{(p as any).username || "—"}</span>

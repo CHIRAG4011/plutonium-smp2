@@ -25,3 +25,5 @@ export { CustomRole, ALL_PERMISSIONS } from "./models/CustomRole.js";
 export type { ICustomRole, Permission } from "./models/CustomRole.js";
 export { Rank } from "./models/Rank.js";
 export type { IRank } from "./models/Rank.js";
+export { Counter } from "./models/Counter.js";
+export type { ICounter } from "./models/Counter.js";

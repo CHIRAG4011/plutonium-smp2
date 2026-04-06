@@ -2,6 +2,7 @@ import { Router } from "express";
 import { StoreItem, Purchase, User, Coupon, Otp, ProductReview } from "@workspace/db";
 import { requireAuth, AuthRequest } from "../lib/auth.js";
 import { generateId } from "../lib/id.js";
+import { generateOrderNumber } from "../lib/orderNumber.js";
 import { sendOrderConfirmationEmail, sendCheckoutOtpEmail } from "../lib/email.js";
 
 const router = Router();
@@ -129,8 +130,10 @@ router.post("/purchase", requireAuth, async (req: AuthRequest, res) => {
       await User.updateOne({ _id: user._id }, { activeRank: item.name });
     }
 
+    const orderNumber = await generateOrderNumber();
     const purchase = await Purchase.create({
       _id: generateId(),
+      orderNumber,
       userId: user.id,
       username: user.username || "",
       itemId: item.id,
@@ -224,6 +227,7 @@ router.post("/checkout", requireAuth, async (req: AuthRequest, res) => {
     let totalUsd = 0;
     const orderItems: { name: string; price: number; quantity: number }[] = [];
     const purchaseIds: string[] = [];
+    const orderNumbers: string[] = [];
 
     for (const cartItem of items as { itemId: string; quantity: number }[]) {
       const storeItem = storeItems.find((i) => i.id === cartItem.itemId);
@@ -236,9 +240,12 @@ router.post("/checkout", requireAuth, async (req: AuthRequest, res) => {
 
       for (let q = 0; q < qty; q++) {
         const purchaseId = generateId();
+        const orderNumber = await generateOrderNumber();
         purchaseIds.push(purchaseId);
+        orderNumbers.push(orderNumber);
         await Purchase.create({
           _id: purchaseId,
+          orderNumber,
           userId: user.id,
           username: user.username || "",
           itemId: storeItem.id,
@@ -257,55 +264,11 @@ router.post("/checkout", requireAuth, async (req: AuthRequest, res) => {
       user.username,
       orderItems,
       totalUsd,
-      couponCode ? discountPercent : 0
+      couponCode ? discountPercent : 0,
+      orderNumbers.join(", ")
     ).catch(() => {});
 
     res.json({ message: "Order placed successfully! Check your email for confirmation. Your order is pending review.", purchaseIds });
-  } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-router.get("/purchases/:id", requireAuth, async (req: AuthRequest, res) => {
-  try {
-    const purchase = await Purchase.findOne({ _id: req.params.id, userId: req.user!.id });
-    if (!purchase) {
-      res.status(404).json({ error: "Order not found" });
-      return;
-    }
-    res.json(purchase.toJSON());
-  } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-router.post("/purchases/:id/payment-proof", requireAuth, async (req: AuthRequest, res) => {
-  try {
-    const { imageDataUrl } = req.body;
-    if (!imageDataUrl || typeof imageDataUrl !== "string") {
-      res.status(400).json({ error: "Image data required" });
-      return;
-    }
-    if (!imageDataUrl.startsWith("data:image/")) {
-      res.status(400).json({ error: "Invalid image format" });
-      return;
-    }
-    const purchase = await Purchase.findOne({ _id: req.params.id, userId: req.user!.id });
-    if (!purchase) {
-      res.status(404).json({ error: "Order not found" });
-      return;
-    }
-    if (purchase.status !== "pending") {
-      res.status(400).json({ error: "Can only submit proof for pending orders" });
-      return;
-    }
-    await Purchase.updateOne(
-      { _id: purchase._id },
-      { paymentProofUrl: imageDataUrl, paymentProofSubmittedAt: new Date() }
-    );
-    res.json({ message: "Payment proof submitted successfully" });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

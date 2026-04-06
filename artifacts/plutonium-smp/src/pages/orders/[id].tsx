@@ -149,7 +149,7 @@ export default function OrderDetail() {
         </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-display font-bold">Order Details</h1>
-          <p className="text-muted-foreground text-xs font-mono mt-0.5 truncate">{p?.id}</p>
+          <p className="text-muted-foreground text-xs font-mono mt-0.5 truncate">{(p as any)?.orderNumber || p?.id}</p>
         </div>
         {p && <StatusBadge status={p.status} />}
       </div>

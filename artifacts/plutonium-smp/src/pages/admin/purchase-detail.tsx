@@ -64,22 +64,25 @@ export default function AdminPurchaseDetail() {
 
   const isAdmin = user?.role === "admin" || user?.role === "owner";
 
+  const [statusUpdate, setStatusUpdate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
   const { data: purchase, isLoading, refetch } = useQuery({
     queryKey: ["admin-purchase", id],
     queryFn: async () => {
       const r = await authFetch(`/admin/purchases/${id}`);
       if (!r.ok) throw new Error("Not found");
-      return r.json();
+      const data = await r.json();
+      setStatusUpdate(data.status || "pending");
+      setNotes(data.notes || "");
+      return data;
     },
     enabled: !!id,
   });
 
-  const [statusUpdate, setStatusUpdate] = useState("");
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-
   const handleSaveStatus = async () => {
-    if (!isAdmin) return;
+    if (!isAdmin || !statusUpdate) return;
     setSaving(true);
     try {
       const r = await authFetch(`/admin/purchases/${id}/status`, {
@@ -135,7 +138,7 @@ export default function AdminPurchaseDetail() {
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-display font-bold">Order Details</h1>
           <p className="text-muted-foreground text-xs font-mono mt-0.5 flex items-center gap-2">
-            <span>{p.id}</span>
+            <span>{p.orderNumber || p.id}</span>
           </p>
         </div>
         <StatusBadge status={p.status} />
@@ -350,8 +353,8 @@ export default function AdminPurchaseDetail() {
 
             <div className="space-y-3">
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Order ID</p>
-                <p className="font-mono text-xs break-all text-muted-foreground bg-background/50 border border-border rounded-lg p-2">{p.id}</p>
+                <p className="text-xs text-muted-foreground mb-1">Order Number</p>
+                <p className="font-mono text-xs break-all text-foreground bg-background/50 border border-border rounded-lg p-2 font-bold">{p.orderNumber || p.id}</p>
               </div>
 
               <div>
