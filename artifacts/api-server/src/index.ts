@@ -1,6 +1,7 @@
 import { connectDB } from "@workspace/db";
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
+import { seedBuiltinCategories } from "./routes/admin.js";
 
 const rawPort = process.env["PORT"] ?? "3001";
 const port = Number(rawPort);
@@ -10,7 +11,8 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 connectDB()
-  .then(() => {
+  .then(async () => {
+    await seedBuiltinCategories();
     app.listen(port, (err) => {
       if (err) {
         logger.error({ err }, "Error listening on port");

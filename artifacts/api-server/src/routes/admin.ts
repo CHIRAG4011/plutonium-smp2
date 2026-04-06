@@ -892,7 +892,7 @@ const BUILTIN_CATEGORIES = [
   { name: "Permissions", value: "permissions", icon: "🛡️",  color: "#6366f1", sortOrder: 7 },
 ];
 
-async function seedBuiltinCategories() {
+export async function seedBuiltinCategories() {
   for (const cat of BUILTIN_CATEGORIES) {
     const existing = await StoreCategory.findOne({ value: cat.value });
     if (!existing) {
@@ -912,7 +912,6 @@ async function seedBuiltinCategories() {
 
 router.get("/store-categories", async (req, res) => {
   try {
-    await seedBuiltinCategories();
     const cats = await StoreCategory.find().sort({ sortOrder: 1, createdAt: 1 });
     res.json(cats.map((c) => c.toJSON()));
   } catch (err) {

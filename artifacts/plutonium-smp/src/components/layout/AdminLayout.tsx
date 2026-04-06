@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {
-  LayoutDashboard, Users, ShoppingBag, Ticket, CreditCard,
+  LayoutDashboard, Users, ShoppingBag, Ticket,
   Megaphone, Tag, ShieldCheck, Trophy, Settings, Shield, Star, FolderOpen,
 } from "lucide-react";
 
@@ -51,7 +51,6 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     { name: "Leaderboard",  href: "/admin/leaderboard",    icon: Trophy,          permission: "view_leaderboard"  },
     { name: "Store Items",  href: "/admin/store",          icon: ShoppingBag,     permission: "view_store"        },
     { name: "Tickets",      href: "/admin/tickets",        icon: Ticket,          permission: "view_tickets"      },
-    { name: "Purchases",    href: "/admin/purchases",      icon: CreditCard,      permission: "view_purchases"    },
     { name: "Announcements",href: "/admin/announcements",  icon: Megaphone,       permission: "view_announcements"},
     { name: "Coupons",      href: "/admin/coupons",        icon: Tag,             permission: "view_coupons"      },
     { name: "Categories",   href: "/admin/categories",     icon: FolderOpen,      permission: "manage_store_categories" },
