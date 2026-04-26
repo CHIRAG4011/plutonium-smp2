@@ -18,3 +18,14 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+LOG_LEVEL = "info"
+SMTP_FROM = "Plutonium SMP <noreply@plutonium-smp.dev>"
+ALLOWED_ORIGINS = "*"
+
+[[ports]]
+localPort = 19366
+externalPort = 80
