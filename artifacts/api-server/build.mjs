@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -12,9 +12,7 @@ const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
-  const apiDir = path.resolve(artifactDir, "api");
   await rm(distDir, { recursive: true, force: true });
-  await rm(apiDir, { recursive: true, force: true });
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],
@@ -120,19 +118,6 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
-
-  // Build Vercel serverless bundle (CJS, bundles all deps)
-  await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/serverless.ts")],
-    platform: "node",
-    bundle: true,
-    format: "cjs",
-    outfile: path.resolve(apiDir, "index.js"),
-    logLevel: "info",
-    external: ["*.node"],
-  });
-  await writeFile(path.resolve(apiDir, "package.json"), JSON.stringify({ type: "commonjs" }, null, 2) + "\n");
-  console.log("✓ Vercel serverless bundle written to api/index.js");
 }
 
 buildAll().catch((err) => {

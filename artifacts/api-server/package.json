@@ -2,7 +2,6 @@
   "name": "@workspace/api-server",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "pnpm@10.26.1",
   "type": "module",
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
@@ -13,26 +12,18 @@
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
-    "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
     "drizzle-orm": "catalog:",
     "express": "^5",
-    "jsonwebtoken": "^9.0.3",
-    "minecraft-server-util": "^5.4.4",
-    "nodemailer": "^6.9.16",
     "pino": "^9",
-    "pino-http": "^10",
-    "resend": "^6.9.4"
+    "pino-http": "^10"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^3.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "catalog:",
-    "@types/nodemailer": "^6.4.17",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13",
