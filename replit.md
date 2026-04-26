@@ -1,27 +1,49 @@
-# Workspace
+# Plutonium SMP
 
-## Overview
+A Minecraft Lifesteal SMP store and community web app, migrated from a Vercel/v0 project to Replit's pnpm monorepo.
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+## Architecture
 
-## Stack
+This is a pnpm monorepo with three artifacts and shared libraries.
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+### Artifacts
+- **artifacts/plutonium-smp** (web, port 19366, path `/`) — Vite + React frontend. Wouter routing, shadcn/ui, Tailwind v4, Framer Motion. Dark "neon green" gaming aesthetic.
+- **artifacts/api-server** (api, port 8080, path `/api`) — Express + Mongoose backend. JWT auth, Discord OAuth, Resend/SMTP emails, Pino logging. Routes: auth, store, users, purchases, tickets, server, admin, leaderboard, announcements.
+- **artifacts/mockup-sandbox** (design, port 8081, path `/__mockup`) — Canvas component preview server (scaffold).
 
-## Key Commands
+### Shared libs
+- **lib/db** — Mongoose models (User, Product, Category, Order, Ticket, Server, Announcement, etc.) and the `connectDB()` helper.
+- **lib/api-spec** — OpenAPI 3 specification used to generate clients.
+- **lib/api-zod** — Zod schemas generated from the OpenAPI spec.
+- **lib/api-client-react** — Generated React Query hooks + custom fetch wrapper.
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
+## Database
+MongoDB via Mongoose. Connection string lives in the `MONGODB_URI` secret. The app reads `MONGODB_URI` first, then falls back to `DATABASE_URL` if it starts with `mongodb`. No Replit Postgres usage.
 
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+## Required secrets
+- `MONGODB_URI` — MongoDB connection string (Atlas free cluster works).
+- `SESSION_SECRET` — JWT/session signing key.
+
+## Optional configuration (env vars / secrets)
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` — Discord OAuth login.
+- `RESEND_API_KEY` or `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` — outbound email. When neither is set, emails are logged to console.
+- `SMTP_FROM` — From address for outbound mail.
+- `ALLOWED_ORIGINS` — CORS allowlist (defaults to `*` for dev).
+- `LOG_LEVEL` — Pino log level (defaults to `info`).
+- `APP_URL` — Public app URL used in email templates.
+
+## Routing
+The Replit proxy maps each artifact to a path prefix. The frontend calls `/api/*` directly (relative URLs), which the proxy routes to `artifacts/api-server`. No `VITE_API_URL` is needed in this environment; the Vite + Express setup talks through the shared proxy.
+
+## Development
+Each workflow is started by Replit's workflow runner:
+- `pnpm --filter @workspace/plutonium-smp run dev`
+- `pnpm --filter @workspace/api-server run dev` (builds with esbuild then runs the bundle)
+- `pnpm --filter @workspace/mockup-sandbox run dev`
+
+## Migration notes
+The original Vercel project was already a pnpm monorepo. The migration:
+1. Re-created the web artifact with Replit's `react-vite` scaffold (which provides the shared libs wiring) and copied the imported `src/`, `public/`, `index.html`, and `components.json` over the scaffold defaults.
+2. Replaced the scaffold versions of `lib/db`, `lib/api-spec`, `lib/api-zod`, and `lib/api-client-react` with the Mongoose-based originals.
+3. Replaced the API server `src/`, `package.json`, `tsconfig.json`, and `build.mjs` with the originals.
+4. Removed the `.migration-backup/` directory after copying everything needed.
