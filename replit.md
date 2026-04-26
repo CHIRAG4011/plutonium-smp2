@@ -47,3 +47,13 @@ The original Vercel project was already a pnpm monorepo. The migration:
 2. Replaced the scaffold versions of `lib/db`, `lib/api-spec`, `lib/api-zod`, and `lib/api-client-react` with the Mongoose-based originals.
 3. Replaced the API server `src/`, `package.json`, `tsconfig.json`, and `build.mjs` with the originals.
 4. Removed the `.migration-backup/` directory after copying everything needed.
+
+## Vercel deployment (still supported alongside Replit)
+The repo can also deploy to Vercel from `artifacts/api-server/` as the project root:
+- `artifacts/api-server/vercel.json` defines install/build commands and `/api/*` rewrites.
+- `build.mjs` outputs `api/index.js` (CJS serverless bundle) and copies the built frontend (`artifacts/plutonium-smp/dist/public/`) into `artifacts/api-server/public/` so Vercel serves it as static.
+- `artifacts/api-server/src/serverless.cts` is the function entrypoint (CJS, hence `.cts`).
+- `vite.config.ts` falls back to safe defaults for `PORT`/`BASE_PATH` during `vite build` so production builds don't require Replit-specific env vars.
+
+## GitHub push
+The GitHub integration was dismissed once. To push from this Repl, either re-connect via the integrations system or store a personal access token (`repo` scope) and use it for HTTPS pushes. The remote `origin` points at `github.com/CHIRAG4011/plutonium-smp2`.
