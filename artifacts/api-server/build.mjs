@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm, writeFile } from "node:fs/promises";
+import { rm, writeFile, cp, access } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -123,7 +123,7 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
 
   // Build Vercel serverless bundle (CJS, bundles all deps)
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/serverless.ts")],
+    entryPoints: [path.resolve(artifactDir, "src/serverless.cts")],
     platform: "node",
     bundle: true,
     format: "cjs",
@@ -133,6 +133,19 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
   await writeFile(path.resolve(apiDir, "package.json"), JSON.stringify({ type: "commonjs" }, null, 2) + "\n");
   console.log("✓ Vercel serverless bundle written to api/index.js");
+
+  // Copy the built frontend (plutonium-smp/dist) into api-server/public so
+  // Vercel can serve it as static assets alongside the /api function.
+  const frontendDist = path.resolve(artifactDir, "../plutonium-smp/dist/public");
+  const publicDir = path.resolve(artifactDir, "public");
+  try {
+    await access(frontendDist);
+    await rm(publicDir, { recursive: true, force: true });
+    await cp(frontendDist, publicDir, { recursive: true });
+    console.log("✓ Frontend copied to api-server/public for Vercel static hosting");
+  } catch {
+    console.warn("⚠ Frontend dist not found at " + frontendDist + " — skipping public/ copy. (Run plutonium-smp build first.)");
+  }
 }
 
 buildAll().catch((err) => {
