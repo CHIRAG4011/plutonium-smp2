@@ -1,7 +1,10 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 
-const JWT_SECRET = process.env.SESSION_SECRET || "plutonium-smp-secret-key";
+const JWT_SECRET = process.env.SESSION_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("SESSION_SECRET environment variable is required");
+}
 
 export function signToken(payload: { id: string; username: string; role: string }) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" });
