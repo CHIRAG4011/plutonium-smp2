@@ -1,19 +1,25 @@
 import { Link } from "wouter";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 export function Footer() {
+  const { siteName, logoUrl } = useSiteConfig();
+  const [namePart1, namePart2] = siteName.includes(" ")
+    ? [siteName.slice(0, siteName.lastIndexOf(" ")), siteName.slice(siteName.lastIndexOf(" ") + 1)]
+    : [siteName, ""];
+
   return (
     <footer className="border-t border-border/50 bg-card py-12 mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <Link href="/" className="flex items-center gap-3 mb-4 group">
-              <img 
-                src={`${import.meta.env.BASE_URL}images/logo.png`} 
-                alt="Plutonium SMP" 
+              <img
+                src={logoUrl || `${import.meta.env.BASE_URL}images/logo.png`}
+                alt={siteName}
                 className="w-8 h-8 rounded-lg grayscale group-hover:grayscale-0 transition-all"
               />
               <span className="font-display font-bold text-xl tracking-tight">
-                PLUTONIUM<span className="text-primary">SMP</span>
+                {namePart1}<span className="text-primary">{namePart2}</span>
               </span>
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm">
@@ -45,7 +51,7 @@ export function Footer() {
         </div>
         
         <div className="border-t border-border/50 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Plutonium SMP. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {siteName}. All rights reserved.</p>
           <div className="flex space-x-4 mt-4 md:mt-0">
             <Link href="/terms" className="hover:text-foreground">Terms of Service</Link>
             <Link href="/privacy" className="hover:text-foreground">Privacy Policy</Link>

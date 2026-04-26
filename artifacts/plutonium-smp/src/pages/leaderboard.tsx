@@ -1,4 +1,5 @@
 import { useGetLeaderboard } from "@workspace/api-client-react";
+import { useSiteConfig } from "@/lib/siteConfig";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -88,6 +89,7 @@ function PodiumCard({ player, position }: { player: any; position: number }) {
 
 export default function Leaderboard() {
   const { data: players, isLoading } = useGetLeaderboard();
+  const { siteName } = useSiteConfig();
 
   const top3 = (players ?? []).slice(0, 3);
   const rest = (players ?? []).slice(3);
@@ -120,7 +122,7 @@ export default function Leaderboard() {
             transition={{ delay: 0.2 }}
             className="text-muted-foreground text-lg"
           >
-            The greatest warriors on Plutonium SMP, ranked by tier and kills.
+            The greatest warriors on {siteName}, ranked by tier and kills.
           </motion.p>
         </div>
 

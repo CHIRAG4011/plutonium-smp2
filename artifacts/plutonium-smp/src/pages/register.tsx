@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteConfig } from "@/lib/siteConfig";
 import { UserPlus, Mail, CheckCircle } from "lucide-react";
 
 const registerSchema = z.object({
@@ -28,6 +29,7 @@ export default function Register() {
   const [, setLocation] = useLocation();
   const { login: setAuthToken } = useAuth();
   const { toast } = useToast();
+  const { siteName } = useSiteConfig();
 
   const [otpStep, setOtpStep] = useState<"email" | "verify" | "done">("email");
   const [verifiedEmail, setVerifiedEmail] = useState("");
@@ -91,7 +93,7 @@ export default function Register() {
     }, {
       onSuccess: (res) => {
         setAuthToken(res.token);
-        toast({ title: "Account created!", description: "Welcome to Plutonium SMP." });
+        toast({ title: "Account created!", description: `Welcome to ${siteName}.` });
         setLocation("/dashboard");
       },
       onError: (err: any) => {

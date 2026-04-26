@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteConfig } from "@/lib/siteConfig";
 import { Shield, Mail } from "lucide-react";
 
 const loginSchema = z.object({
@@ -22,6 +23,7 @@ export default function Login() {
   const search = useSearch();
   const { login: setAuthToken } = useAuth();
   const { toast } = useToast();
+  const { siteName } = useSiteConfig();
 
   const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [pendingEmail, setPendingEmail] = useState("");
@@ -124,7 +126,7 @@ export default function Login() {
         <div className="text-center mb-8">
           <Shield className="w-12 h-12 text-primary mx-auto mb-4" />
           <h1 className="font-display text-4xl font-bold">Welcome Back</h1>
-          <p className="text-muted-foreground mt-2">Login to your Plutonium account</p>
+          <p className="text-muted-foreground mt-2">Login to your {siteName} account</p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 shadow-xl">

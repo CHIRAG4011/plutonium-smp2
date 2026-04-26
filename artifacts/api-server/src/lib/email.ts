@@ -1,7 +1,8 @@
 import { Resend } from "resend";
+import { getBranding } from "./branding.js";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const FROM_ADDRESS = process.env.SMTP_FROM || "Plutonium SMP <noreply@plutoniumsmp.net>";
+const FROM_OVERRIDE = process.env.SMTP_FROM || "";
 
 const isConfigured = Boolean(RESEND_API_KEY);
 const resend = isConfigured ? new Resend(RESEND_API_KEY) : null;
@@ -12,7 +13,12 @@ if (!isConfigured) {
   console.log("[EMAIL] Resend configured and ready.");
 }
 
-async function sendEmail(to: string, subject: string, html: string) {
+function fromAddress(siteName: string) {
+  if (FROM_OVERRIDE) return FROM_OVERRIDE;
+  return `${siteName} <noreply@watermc.fun>`;
+}
+
+async function sendEmail(to: string, subject: string, html: string, siteName: string) {
   const plainText = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
   if (!resend) {
@@ -22,7 +28,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 
   const { error } = await resend.emails.send({
-    from: FROM_ADDRESS,
+    from: fromAddress(siteName),
     to,
     subject,
     html,
@@ -37,27 +43,29 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 }
 
-function brandHeader(avatarUrl?: string | null) {
+function brandHeader(siteName: string, serverIp: string, avatarUrl?: string | null) {
   return `
   <div style="background:#ffffff;padding:24px 40px 20px;border-bottom:3px solid #22c55e;">
     <div style="display:flex;align-items:center;gap:14px;">
       <div style="background:#dcfce7;border-radius:10px;padding:8px 14px;display:inline-block;">
-        <h1 style="color:#16a34a;font-family:monospace;font-size:22px;margin:0;letter-spacing:2px;">⚡ PLUTONIUM SMP</h1>
+        <h1 style="color:#16a34a;font-family:monospace;font-size:22px;margin:0;letter-spacing:2px;">⚡ ${siteName}</h1>
       </div>
       ${avatarUrl ? `<img src="${avatarUrl}" style="width:40px;height:40px;border-radius:50%;border:2px solid #22c55e;margin-left:auto;" alt="Avatar" />` : ""}
     </div>
-    <p style="color:#6b7280;font-size:12px;margin:6px 0 0;font-family:monospace;">play.plutoniumsmp.fun</p>
+    <p style="color:#6b7280;font-size:12px;margin:6px 0 0;font-family:monospace;">${serverIp}</p>
   </div>
 `;
 }
 
-const brandFooter = `
+function brandFooter(siteName: string, serverIp: string) {
+  return `
   <div style="background:#f0fdf4;padding:20px 40px;border-top:1px solid #bbf7d0;text-align:center;">
-    <p style="color:#16a34a;font-family:monospace;font-size:13px;margin:0 0 4px;">⚡ Plutonium SMP</p>
-    <p style="color:#6b7280;font-size:12px;margin:0;">© 2026 Plutonium SMP — play.plutoniumsmp.fun</p>
-    <p style="color:#9ca3af;font-size:11px;margin:6px 0 0;">Minecraft Lifesteal Server • Season 2</p>
+    <p style="color:#16a34a;font-family:monospace;font-size:13px;margin:0 0 4px;">⚡ ${siteName}</p>
+    <p style="color:#6b7280;font-size:12px;margin:0;">© ${new Date().getFullYear()} ${siteName} — ${serverIp}</p>
+    <p style="color:#9ca3af;font-size:11px;margin:6px 0 0;">Minecraft Lifesteal Server</p>
   </div>
 `;
+}
 
 function wrapper(content: string) {
   return `
@@ -73,6 +81,7 @@ function wrapper(content: string) {
 }
 
 export async function sendOtpEmail(to: string, code: string, purpose: "registration" | "login", avatarUrl?: string | null) {
+  const { siteName, serverIp } = await getBranding();
   const label = purpose === "registration" ? "Verify your email" : "Login verification";
   const description =
     purpose === "registration"
@@ -80,7 +89,7 @@ export async function sendOtpEmail(to: string, code: string, purpose: "registrat
       : "Use this code to verify your identity:";
 
   const html = wrapper(`
-    ${brandHeader(avatarUrl)}
+    ${brandHeader(siteName, serverIp, avatarUrl)}
     <div style="padding:40px;">
       <div style="background:#dcfce7;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:16px;">
         <span style="color:#16a34a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${purpose === "registration" ? "New Account" : "Security"}</span>
@@ -93,14 +102,15 @@ export async function sendOtpEmail(to: string, code: string, purpose: "registrat
       </div>
       <p style="color:#9ca3af;font-size:13px;">If you didn't request this, you can safely ignore this email.</p>
     </div>
-    ${brandFooter}
+    ${brandFooter(siteName, serverIp)}
   `);
-  await sendEmail(to, `${code} — ${label} | Plutonium SMP`, html);
+  await sendEmail(to, `${code} — ${label} | ${siteName}`, html, siteName);
 }
 
 export async function sendCheckoutOtpEmail(to: string, username: string, code: string, avatarUrl?: string | null) {
+  const { siteName, serverIp } = await getBranding();
   const html = wrapper(`
-    ${brandHeader(avatarUrl)}
+    ${brandHeader(siteName, serverIp, avatarUrl)}
     <div style="padding:40px;">
       <div style="background:#dcfce7;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:16px;">
         <span style="color:#16a34a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Order Verification</span>
@@ -113,35 +123,37 @@ export async function sendCheckoutOtpEmail(to: string, username: string, code: s
       </div>
       <p style="color:#9ca3af;font-size:13px;">If you didn't initiate a purchase, please ignore this email.</p>
     </div>
-    ${brandFooter}
+    ${brandFooter(siteName, serverIp)}
   `);
-  await sendEmail(to, `${code} — Order Verification | Plutonium SMP`, html);
+  await sendEmail(to, `${code} — Order Verification | ${siteName}`, html, siteName);
 }
 
 export async function sendWelcomeEmail(to: string, username: string, avatarUrl?: string | null) {
+  const { siteName, serverIp } = await getBranding();
   const html = wrapper(`
-    ${brandHeader(avatarUrl)}
+    ${brandHeader(siteName, serverIp, avatarUrl)}
     <div style="padding:40px;">
       <div style="background:#dcfce7;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:16px;">
         <span style="color:#16a34a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Welcome!</span>
       </div>
-      <h2 style="color:#111827;margin:0 0 12px;font-size:24px;">Welcome to Plutonium SMP, ${username}! 🎮</h2>
+      <h2 style="color:#111827;margin:0 0 12px;font-size:24px;">Welcome to ${siteName}, ${username}! 🎮</h2>
       <p style="color:#6b7280;font-size:15px;">Your account has been created successfully. You're ready to join the ultimate Minecraft Lifesteal experience.</p>
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:24px;margin:28px 0;">
-        <p style="color:#16a34a;font-family:monospace;font-size:16px;margin:0 0 8px;font-weight:600;">🎮 Server IP: play.plutoniumsmp.fun</p>
+        <p style="color:#16a34a;font-family:monospace;font-size:16px;margin:0 0 8px;font-weight:600;">🎮 Server IP: ${serverIp}</p>
         <p style="color:#6b7280;font-size:14px;margin:0;">Join our Discord to connect with the community!</p>
       </div>
-      <p style="color:#6b7280;font-size:14px;">Visit <a href="https://plutoniumsmp.fun/store" style="color:#16a34a;font-weight:600;">the store</a> to grab exclusive ranks and perks.</p>
+      <p style="color:#6b7280;font-size:14px;">Visit the store to grab exclusive ranks and perks.</p>
     </div>
-    ${brandFooter}
+    ${brandFooter(siteName, serverIp)}
   `);
-  await sendEmail(to, `Welcome to Plutonium SMP, ${username}!`, html);
+  await sendEmail(to, `Welcome to ${siteName}, ${username}!`, html, siteName);
 }
 
 export async function sendLoginNotificationEmail(to: string, username: string, avatarUrl?: string | null) {
+  const { siteName, serverIp } = await getBranding();
   const now = new Date().toUTCString();
   const html = wrapper(`
-    ${brandHeader(avatarUrl)}
+    ${brandHeader(siteName, serverIp, avatarUrl)}
     <div style="padding:40px;">
       <div style="background:#fef9c3;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:16px;">
         <span style="color:#854d0e;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Security Alert</span>
@@ -153,9 +165,9 @@ export async function sendLoginNotificationEmail(to: string, username: string, a
       </div>
       <p style="color:#dc2626;font-size:14px;background:#fef2f2;border-radius:8px;padding:12px 16px;">⚠️ If this wasn't you, please change your password immediately and contact support on Discord.</p>
     </div>
-    ${brandFooter}
+    ${brandFooter(siteName, serverIp)}
   `);
-  await sendEmail(to, `New Login to Your Plutonium SMP Account`, html);
+  await sendEmail(to, `New Login to Your ${siteName} Account`, html, siteName);
 }
 
 export async function sendOrderConfirmationEmail(
@@ -167,6 +179,7 @@ export async function sendOrderConfirmationEmail(
   orderId?: string,
   avatarUrl?: string | null
 ) {
+  const { siteName, serverIp } = await getBranding();
   const itemRows = items.map(i =>
     `<tr>
       <td style="color:#374151;padding:10px 0;border-bottom:1px solid #dcfce7;">${i.name}${i.quantity > 1 ? ` <span style="color:#6b7280;font-size:12px;">x${i.quantity}</span>` : ""}</td>
@@ -186,7 +199,7 @@ export async function sendOrderConfirmationEmail(
     : "";
 
   const html = wrapper(`
-    ${brandHeader(avatarUrl)}
+    ${brandHeader(siteName, serverIp, avatarUrl)}
     <div style="padding:40px;">
       <div style="background:#dcfce7;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:16px;">
         <span style="color:#16a34a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Order Confirmed</span>
@@ -215,15 +228,16 @@ export async function sendOrderConfirmationEmail(
 
       <p style="color:#9ca3af;font-size:13px;">Items will be delivered within 24 hours after payment confirmation.</p>
     </div>
-    ${brandFooter}
+    ${brandFooter(siteName, serverIp)}
   `);
-  await sendEmail(to, `Order Confirmed — Plutonium SMP Store`, html);
+  await sendEmail(to, `Order Confirmed — ${siteName} Store`, html, siteName);
 }
 
 export async function sendPaymentConfirmationEmail(to: string, username: string, items: string[], totalUsd: number, avatarUrl?: string | null) {
+  const { siteName, serverIp } = await getBranding();
   const itemList = items.map(i => `<li style="color:#374151;padding:4px 0;">${i}</li>`).join("");
   const html = wrapper(`
-    ${brandHeader(avatarUrl)}
+    ${brandHeader(siteName, serverIp, avatarUrl)}
     <div style="padding:40px;">
       <div style="background:#dcfce7;border-radius:8px;padding:6px 14px;display:inline-block;margin-bottom:16px;">
         <span style="color:#16a34a;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Payment Confirmed</span>
@@ -239,7 +253,7 @@ export async function sendPaymentConfirmationEmail(to: string, username: string,
       </div>
       <p style="color:#9ca3af;font-size:13px;margin-top:16px;">Your items will be delivered in-game within 24 hours after payment verification.</p>
     </div>
-    ${brandFooter}
+    ${brandFooter(siteName, serverIp)}
   `);
-  await sendEmail(to, `Payment Confirmed — Plutonium SMP Store`, html);
+  await sendEmail(to, `Payment Confirmed — ${siteName} Store`, html, siteName);
 }

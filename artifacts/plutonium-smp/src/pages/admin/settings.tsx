@@ -38,9 +38,9 @@ interface SiteConfigForm {
 }
 
 const DEFAULT_FORM: SiteConfigForm = {
-  siteName: "PLUTONIUM SMP",
+  siteName: "WATERMC",
   logoUrl: "",
-  serverIp: "play.plutoniumsmp.fun",
+  serverIp: "play.watermc.fun",
   serverPort: "24005",
   serverStatusOverride: "auto",
   heroTitle: "Die Once.",
@@ -55,7 +55,7 @@ const DEFAULT_FORM: SiteConfigForm = {
     { name: "Minecraft-MP", url: "https://minecraft-mp.com/server-s356241", reward: "+500 OWO Coins" },
     { name: "Minecraft.Buzz", url: "https://minecraft.buzz/server/20060", reward: "+500 OWO Coins" },
   ],
-  featuresTitle: "Why Plutonium?",
+  featuresTitle: "Why WaterMC?",
   featuresSubtitle: "We've custom coded every aspect of the server to provide an unmatched, lag-free competitive experience.",
   features: [
     { title: "Lifesteal Core", desc: "Kill players to steal their hearts. Hit 0 hearts and you're banned until the next season." },
@@ -217,7 +217,7 @@ export default function AdminSettings() {
                 id="site-name"
                 value={form.siteName}
                 onChange={(e) => set("siteName", e.target.value)}
-                placeholder="PLUTONIUM SMP"
+                placeholder="WATERMC"
               />
               <p className="text-xs text-muted-foreground">The last word will be highlighted in the primary color.</p>
             </div>
@@ -300,7 +300,7 @@ export default function AdminSettings() {
                 id="server-ip"
                 value={form.serverIp}
                 onChange={(e) => set("serverIp", e.target.value)}
-                placeholder="play.plutoniumsmp.fun"
+                placeholder="play.watermc.fun"
               />
             </div>
             <div className="space-y-1.5">
@@ -354,7 +354,7 @@ export default function AdminSettings() {
               <Input
                 value={form.featuresTitle}
                 onChange={(e) => set("featuresTitle", e.target.value)}
-                placeholder="Why Plutonium?"
+                placeholder="Why WaterMC?"
               />
             </div>
             <div className="space-y-1.5">

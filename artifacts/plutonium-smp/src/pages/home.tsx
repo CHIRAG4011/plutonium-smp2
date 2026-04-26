@@ -39,7 +39,7 @@ export default function Home() {
   const { data: serverStatus } = useGetServerStatus();
   const { data: announcements } = useGetAnnouncements();
 
-  const serverIp = config.serverIp || "play.plutoniumsmp.fun";
+  const serverIp = config.serverIp || "play.watermc.fun";
 
   const handleCopyIP = () => {
     navigator.clipboard.writeText(serverIp);

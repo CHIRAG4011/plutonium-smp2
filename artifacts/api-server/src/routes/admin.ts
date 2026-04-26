@@ -5,6 +5,7 @@ import {
 } from "@workspace/db";
 import { requireAdmin, requireModerator, requirePermission, AuthRequest } from "../lib/auth.js";
 import { generateId } from "../lib/id.js";
+import { clearBrandingCache } from "../lib/branding.js";
 import bcrypt from "bcryptjs";
 
 const router = Router();
@@ -500,7 +501,7 @@ router.get("/server-config", async (req, res) => {
     if (!config) {
       config = await ServerConfig.create({
         _id: "main",
-        serverIp: "play.plutoniumsmp.fun",
+        serverIp: "play.watermc.fun",
         serverPort: 24005,
         updatedAt: new Date(),
       });
@@ -522,9 +523,10 @@ router.put("/server-config", async (req, res) => {
     }
     const config = await ServerConfig.findOneAndUpdate(
       { _id: "main" },
-      { serverIp: serverIp || "play.plutoniumsmp.fun", serverPort: port, updatedAt: new Date() },
+      { serverIp: serverIp || "play.watermc.fun", serverPort: port, updatedAt: new Date() },
       { new: true, upsert: true }
     );
+    clearBrandingCache();
     res.json({ serverIp: config.serverIp, serverPort: config.serverPort, message: "Server config updated" });
   } catch (err) {
     req.log.error(err);
@@ -536,7 +538,7 @@ router.get("/site-config", async (req, res) => {
   try {
     let config = await ServerConfig.findOne({ _id: "main" });
     if (!config) {
-      config = await ServerConfig.create({ _id: "main", serverIp: "play.plutoniumsmp.fun", serverPort: 24005, updatedAt: new Date() });
+      config = await ServerConfig.create({ _id: "main", serverIp: "play.watermc.fun", serverPort: 24005, updatedAt: new Date() });
     }
     res.json({
       siteName: config.siteName,
@@ -600,6 +602,7 @@ router.put("/site-config", async (req, res) => {
       { new: true, upsert: true }
     );
 
+    clearBrandingCache();
     res.json({ message: "Site config updated", config });
   } catch (err) {
     req.log.error(err);
@@ -620,18 +623,18 @@ router.post("/seed", async (req, res) => {
         {
           $setOnInsert: {
             _id: adminId,
-            username: "PlutoniumAdmin",
-            email: "admin@plutoniumsmp.net",
+            username: "WaterMCAdmin",
+            email: "admin@watermc.fun",
             passwordHash,
             role: "owner",
             owoBalance: 999999,
-            minecraftUsername: "PlutoniumAdmin",
+            minecraftUsername: "WaterMCAdmin",
             activeRank: "Owner",
           },
         },
         { upsert: true }
       );
-      results.push("Created admin user: admin@plutoniumsmp.net / admin123");
+      results.push("Created admin user: admin@watermc.fun / admin123");
     } else {
       results.push("Admin user already exists — skipped");
     }
@@ -656,7 +659,7 @@ router.post("/seed", async (req, res) => {
     const existingLb = await Leaderboard.findOne();
     if (!existingLb) {
       await Leaderboard.insertMany([
-        { _id: "lb-1", userId: "admin-plutonium-001", username: "PlutoniumAdmin", minecraftUsername: "PlutoniumAdmin", tier: "HT1", kills: 420, activeRank: "Owner", updatedAt: new Date() },
+        { _id: "lb-1", userId: "admin-plutonium-001", username: "WaterMCAdmin", minecraftUsername: "WaterMCAdmin", tier: "HT1", kills: 420, activeRank: "Owner", updatedAt: new Date() },
         { _id: "lb-2", userId: "lb-user-2", username: "HeartThief_X", tier: "HT1", kills: 312, activeRank: "Legend", updatedAt: new Date() },
         { _id: "lb-3", userId: "lb-user-3", username: "NeonSlayer", tier: "HT2", kills: 287, activeRank: "MVP", updatedAt: new Date() },
         { _id: "lb-4", userId: "lb-user-4", username: "LifeStealKing", tier: "HT2", kills: 198, activeRank: "Legend", updatedAt: new Date() },
@@ -675,9 +678,9 @@ router.post("/seed", async (req, res) => {
     const existingAnn = await Announcement.findOne();
     if (!existingAnn) {
       await Announcement.insertMany([
-        { _id: "ann-1", title: "Welcome to Plutonium SMP!", content: "The server is now live! Join us at play.plutoniumsmp.net and experience the ultimate Lifesteal SMP. Survive, steal hearts, and dominate the leaderboard!", type: "info", isActive: true, authorId: adminId, authorName: "PlutoniumAdmin", createdAt: new Date() },
-        { _id: "ann-2", title: "Weekend 2x OWO Event", content: "This weekend only - earn DOUBLE OWO coins for all kills and activities! Stack up your balance and dominate the store. Event runs Friday-Sunday.", type: "event", isActive: true, authorId: adminId, authorName: "PlutoniumAdmin", createdAt: new Date() },
-        { _id: "ann-3", title: "Season 2 Update v1.21.1", content: "We've upgraded to Minecraft 1.21.1! New crates, new ranks, and an improved PvP system. Check the store for the new Legendary crate keys!", type: "update", isActive: true, authorId: adminId, authorName: "PlutoniumAdmin", createdAt: new Date() },
+        { _id: "ann-1", title: "Welcome to WaterMC!", content: "The server is now live! Join us at play.watermc.fun and experience the ultimate Lifesteal SMP. Survive, steal hearts, and dominate the leaderboard!", type: "info", isActive: true, authorId: adminId, authorName: "WaterMCAdmin", createdAt: new Date() },
+        { _id: "ann-2", title: "Weekend 2x OWO Event", content: "This weekend only - earn DOUBLE OWO coins for all kills and activities! Stack up your balance and dominate the store. Event runs Friday-Sunday.", type: "event", isActive: true, authorId: adminId, authorName: "WaterMCAdmin", createdAt: new Date() },
+        { _id: "ann-3", title: "Season 2 Update v1.21.1", content: "We've upgraded to Minecraft 1.21.1! New crates, new ranks, and an improved PvP system. Check the store for the new Legendary crate keys!", type: "update", isActive: true, authorId: adminId, authorName: "WaterMCAdmin", createdAt: new Date() },
       ]);
       results.push("Created announcements");
     } else {
@@ -776,7 +779,7 @@ router.post("/ranks", requireAdmin, async (req, res) => {
     await StoreItem.create({
       _id: storeItemId,
       name: name.trim(),
-      description: description?.trim() || `${name.trim()} rank for Plutonium SMP`,
+      description: description?.trim() || `${name.trim()} rank for WaterMC`,
       category: "ranks",
       price: Number(price) || 0,
       currency: resolvedCurrency,
@@ -846,7 +849,7 @@ router.put("/ranks/:id", requireAdmin, async (req, res) => {
     if (rank.storeItemId) {
       await StoreItem.findOneAndUpdate({ _id: rank.storeItemId }, {
         name: updates.name,
-        description: updates.description || `${updates.name} rank for Plutonium SMP`,
+        description: updates.description || `${updates.name} rank for WaterMC`,
         price: updates.price,
         currency: updates.currency,
         features: updates.features,

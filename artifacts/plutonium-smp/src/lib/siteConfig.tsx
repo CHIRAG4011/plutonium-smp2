@@ -28,9 +28,9 @@ export interface SiteConfig {
 }
 
 const DEFAULT_CONFIG: SiteConfig = {
-  siteName: "PLUTONIUM SMP",
+  siteName: "WATERMC",
   logoUrl: "",
-  serverIp: "play.plutoniumsmp.fun",
+  serverIp: "play.watermc.fun",
   heroTitle: "Die Once.",
   heroTitleHighlight: "Lose Everything.",
   heroSubtitle: "The most brutal Minecraft Lifesteal experience. Steal hearts, build your empire, and dominate the leaderboard.",
@@ -43,7 +43,7 @@ const DEFAULT_CONFIG: SiteConfig = {
     { name: "Minecraft-MP", url: "https://minecraft-mp.com/server-s356241", reward: "+500 OWO Coins" },
     { name: "Minecraft.Buzz", url: "https://minecraft.buzz/server/20060", reward: "+500 OWO Coins" },
   ],
-  featuresTitle: "Why Plutonium?",
+  featuresTitle: "Why WaterMC?",
   featuresSubtitle: "We've custom coded every aspect of the server to provide an unmatched, lag-free competitive experience.",
   features: [
     { title: "Lifesteal Core", desc: "Kill players to steal their hearts. Hit 0 hearts and you're banned until the next season." },
@@ -64,6 +64,14 @@ export function SiteConfigProvider({ children }: { children: ReactNode }) {
       .then((data) => setConfig((prev) => ({ ...prev, ...data })))
       .catch(() => {});
   }, []);
+
+  // Keep the document title in sync with the configured site name so
+  // browser tabs / bookmarks reflect the brand the admin chose.
+  useEffect(() => {
+    if (config.siteName) {
+      document.title = config.siteName;
+    }
+  }, [config.siteName]);
 
   return (
     <SiteConfigContext.Provider value={config}>

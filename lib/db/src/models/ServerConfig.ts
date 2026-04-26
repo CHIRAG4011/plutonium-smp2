@@ -43,10 +43,10 @@ const FeatureSchema = new Schema<IFeature>(
 
 const ServerConfigSchema = new Schema<IServerConfig>({
   _id: { type: String, required: true },
-  serverIp: { type: String, default: "play.plutoniumsmp.fun" },
+  serverIp: { type: String, default: "play.watermc.fun" },
   serverPort: { type: Number, default: 24005 },
   serverStatusOverride: { type: String, enum: ["auto", "online", "offline"], default: "auto" },
-  siteName: { type: String, default: "PLUTONIUM SMP" },
+  siteName: { type: String, default: "WATERMC" },
   logoUrl: { type: String, default: "" },
   heroTitle: { type: String, default: "Die Once." },
   heroTitleHighlight: { type: String, default: "Lose Everything." },
@@ -63,7 +63,7 @@ const ServerConfigSchema = new Schema<IServerConfig>({
       { name: "Minecraft.Buzz", url: "https://minecraft.buzz/server/20060", reward: "+500 OWO Coins" },
     ],
   },
-  featuresTitle: { type: String, default: "Why Plutonium?" },
+  featuresTitle: { type: String, default: "Why WaterMC?" },
   featuresSubtitle: { type: String, default: "We've custom coded every aspect of the server to provide an unmatched, lag-free competitive experience." },
   features: {
     type: [FeatureSchema],

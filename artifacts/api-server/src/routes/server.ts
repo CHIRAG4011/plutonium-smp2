@@ -4,7 +4,7 @@ import { status as mcStatus } from "minecraft-server-util";
 
 const router = Router();
 
-const DEFAULT_SERVER_IP = "play.plutoniumsmp.fun";
+const DEFAULT_SERVER_IP = "play.watermc.fun";
 const DEFAULT_SERVER_PORT = 24005;
 
 let cachedStatus: any = null;
@@ -28,7 +28,7 @@ router.get("/site-config", async (_req, res) => {
   try {
     const config = await getServerConfig();
     res.json({
-      siteName: config.siteName || "PLUTONIUM SMP",
+      siteName: config.siteName || "WATERMC",
       logoUrl: config.logoUrl || "",
       serverIp: config.serverIp,
       heroTitle: config.heroTitle || "Die Once.",
@@ -43,7 +43,7 @@ router.get("/site-config", async (_req, res) => {
         { name: "Minecraft-MP", url: "https://minecraft-mp.com/server-s356241", reward: "+500 OWO Coins" },
         { name: "Minecraft.Buzz", url: "https://minecraft.buzz/server/20060", reward: "+500 OWO Coins" },
       ],
-      featuresTitle: config.featuresTitle || "Why Plutonium?",
+      featuresTitle: config.featuresTitle || "Why WaterMC?",
       featuresSubtitle: config.featuresSubtitle || "We've custom coded every aspect of the server to provide an unmatched, lag-free competitive experience.",
       features: config.features?.length ? config.features : [
         { title: "Lifesteal Core", desc: "Kill players to steal their hearts. Hit 0 hearts and you're banned until the next season." },
@@ -76,7 +76,7 @@ router.get("/server/status", async (_req, res) => {
         port: config.serverPort,
         uptime: "99.9%",
         tps: 20,
-        motd: config.siteName || "Plutonium SMP",
+        motd: config.siteName || "WaterMC",
       };
       lastFetch = now;
       res.json(cachedStatus);
@@ -104,7 +104,7 @@ router.get("/server/status", async (_req, res) => {
     let players = 0;
     let maxPlayers = 100;
     let version = "1.21.1";
-    let motd = "Plutonium SMP";
+    let motd = "WaterMC";
 
     // Try minecraft-server-util first
     try {
@@ -113,7 +113,7 @@ router.get("/server/status", async (_req, res) => {
       players = result.players.online;
       maxPlayers = result.players.max;
       version = result.version.name;
-      motd = result.motd?.clean ?? "Plutonium SMP";
+      motd = result.motd?.clean ?? "WaterMC";
     } catch {
       // Fallback: mcsrvstat.us public API
       try {
@@ -130,7 +130,7 @@ router.get("/server/status", async (_req, res) => {
             players = data.players?.online ?? 0;
             maxPlayers = data.players?.max ?? 100;
             version = data.version ?? "1.21.1";
-            motd = data.motd?.clean?.[0] ?? "Plutonium SMP";
+            motd = data.motd?.clean?.[0] ?? "WaterMC";
           }
         }
       } catch {
